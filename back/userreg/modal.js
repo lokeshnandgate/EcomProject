@@ -20,10 +20,55 @@ const userSchema = new mongoose.Schema({
   },
   userType: {
     type: String,
-    enum: ['customerUser'],
-    default: 'customerUser',
+    enum: ['User'],
+    default: 'User',
+  },
+  contactNumber: {
+    type: String,
+    required: false, // Make it true if you want mandatory
+    match: /^[0-9]{10,15}$/, // Basic mobile number validation
+    default: null,
+  },
+  locationUrl: {
+    type: String,
+    required: false,
+    match: /^(http|https):\/\/[^ "]+$/, // Must be a URL
+    default: null,
+  },
+  address: {
+    type: String,
+    required: false,
+    minlength: 10,
+    default: null,
+  },
+  about: {
+    type: String,
+    required: false,
+    maxlength: 500,
+    default: null,
+  },
+  accountCreatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  loginHistory: [{
+    type: Date,
+    default: Date.now,
+  }],
+  logoutHistory: [{
+    type: Date,
+    default: Date.now,
+  }],
+  loginCount: {
+    type: Number,
+    default: 0,
+  },
+  logoutCount: {
+    type: Number,
+    default: 0,
   },
 });
+
 
 // Check if the model is already compiled, and if not, create it
 const User = mongoose.models.User || mongoose.model('User', userSchema);
