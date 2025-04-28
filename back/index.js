@@ -20,7 +20,7 @@ const PORT = 3001;
 app.use(express.json());
 // Middleware
 app.use(cors());
-
+console.log("first")
 // MongoDB Connection
 const connectDB = async () => {
   try {
