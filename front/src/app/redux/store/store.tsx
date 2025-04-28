@@ -1,10 +1,9 @@
-// store.ts
+// redux/store.ts
 import { configureStore } from '@reduxjs/toolkit';
 import productReducer from '../products/slice';
 import { userReducer, businessReducer } from '../login/slice';
 import registerReducer from '../userreg/slice';
 import businessUserReducer from '../businessreg/slice';
-import profileReducer from '../profile/slice';  
 
 export const store = configureStore({
   reducer: {
@@ -13,7 +12,6 @@ export const store = configureStore({
     business: businessReducer,
     register: registerReducer,
     businessUser: businessUserReducer,
-    profile: profileReducer,  
   },
   devTools: process.env.NODE_ENV !== 'production',
 });
