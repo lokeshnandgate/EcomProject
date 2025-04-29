@@ -1,45 +1,53 @@
-// redux/slices/userSlice.ts
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { registerUser } from './action';
+import { createSlice } from '@reduxjs/toolkit';
+import { registerUser } from './action';  // Corrected the import name
 
-interface UserState {
-  userInfo: any;
+interface BusinessRegisterState {
   loading: boolean;
   error: string | null;
+  successMessage: string | null;
+  userInfo: {
+    token: string | null;
+    userId: string | null;
+    userType: string | null;
+  } | null;
 }
 
-const initialState: UserState = {
-  userInfo: null,
+const initialState: BusinessRegisterState = {
   loading: false,
   error: null,
+  successMessage: null,
+  userInfo: {
+    token: null,
+    userId: null,
+    userType: null,
+  },
 };
 
-const userSlice = createSlice({
-  name: 'user',
+const businessRegisterSlice = createSlice({
+  name: 'businessRegister',
   initialState,
-  reducers: {
-    logout: (state) => {
-      state.userInfo = null;
-      sessionStorage.removeItem('userInfo');
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.successMessage = null;
       })
-      .addCase(registerUser.fulfilled, (state, action: PayloadAction<any>) => {
+      .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.userInfo = action.payload;
-        sessionStorage.setItem('userInfo', JSON.stringify(action.payload));
+        state.userInfo = {
+          token: action.payload.token,
+          userId: action.payload.userId,
+          userType: action.payload.userType,
+        };
+        state.successMessage = action.payload.message;
       })
-      .addCase(registerUser.rejected, (state, action: PayloadAction<any>) => {
+      .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { logout } = userSlice.actions;
-export default userSlice.reducer;
+export default businessRegisterSlice.reducer;

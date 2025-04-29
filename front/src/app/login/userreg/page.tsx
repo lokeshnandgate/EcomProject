@@ -1,7 +1,8 @@
+// app/user-register/page.tsx
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/app/redux/store/store';
 import { registerUser } from '@/app/redux/userreg/action';
@@ -9,47 +10,88 @@ import { registerUser } from '@/app/redux/userreg/action';
 export default function UserRegisterPage() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
+  const { loading, error, userInfo } = useSelector((state: RootState) => state.user); // Correct slice name
 
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    showPassword: false,
+    showConfirmPassword: false,
+  });
+
   const [captchaChecked, setCaptchaChecked] = useState(false);
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const [formErrors, setFormErrors] = useState({
+    username: '',
+    email: '',
+    captcha: '',
+  });
 
-  const { loading, error, userInfo } = useSelector((state: RootState) => state.register);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-  const handleRegister = () => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const newErrors = {
+      username: '',
+      email: '',
+      captcha: '',
+    };
+
+    if (formData.username.length < 6) {
+      newErrors.username = 'Username must be at least 6 characters.';
+    }
+
+    if (!formData.email.includes('@')) {
+      newErrors.email = 'Please enter a valid email address.';
+    }
+
     if (!captchaChecked) {
-      alert('Please verify the captcha before proceeding.');
+      newErrors.captcha = 'Please complete the CAPTCHA.';
+    }
+
+    if (newErrors.username || newErrors.email || newErrors.captcha) {
+      setFormErrors(newErrors);
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (
+      !formData.username ||
+      !formData.email ||
+      !formData.password ||
+      !formData.confirmPassword
+    ) {
+      alert('Please fill in all fields.');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
       alert('Passwords do not match.');
       return;
     }
 
-    if (username.length < 6) {
-      alert('Username must be at least 6 characters.');
-      return;
+    try {
+      await dispatch(registerUser({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+      })).unwrap();
+      alert('User registration successful!');
+      router.push('/login');
+    } catch (err: any) {
+      alert(err);
     }
-
-    if (!email.includes('@')) {
-      alert('Invalid email format.');
-      return;
-    }
-
-    dispatch(registerUser({ username, email, password }));
   };
 
   useEffect(() => {
-    if (userInfo) {
-      alert('Registration successful!');
+    const token = localStorage.getItem('token');
+    if (token) {
       router.push('/login');
     }
-  }, [userInfo, router]);
+  }, [router]);
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-950 via-indigo-900 to-blue-900 px-6 py-16">
@@ -58,110 +100,122 @@ export default function UserRegisterPage() {
           Create User Account
         </h1>
 
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium mb-2">Username</label>
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        {loading && <p className="text-white text-sm mb-4">Registering...</p>}
+        {userInfo && <p className="text-green-500 text-sm mb-4">Registration successful!</p>}
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-5">
+            <label htmlFor="username" className="block text-sm font-medium text-white">Username</label>
             <input
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username"
-              className="w-full px-4 py-3 rounded-xl bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-inner"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              className="w-full mt-2 p-3 rounded-md bg-white/20 text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              placeholder="Enter your username"
+              required
             />
-            {username.length > 0 && username.length < 6 && (
-              <p className="text-red-500 text-sm mt-1">
-                Username must be at least 6 characters long.
-              </p>
-            )}
+            {formErrors.username && <p className="text-red-400 text-sm mt-1">{formErrors.username}</p>}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
+          <div className="mb-5">
+            <label htmlFor="email" className="block text-sm font-medium text-white">Email</label>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter email"
-              className="w-full px-4 py-3 rounded-xl bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-inner"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full mt-2 p-3 rounded-md bg-white/20 text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              placeholder="Enter your email"
+              required
             />
-            {email.length > 0 && !email.includes('@') && (
-              <p className="text-red-500 text-sm mt-1">
-                Please enter a valid email address containing "@".
-              </p>
-            )}
+            {formErrors.email && <p className="text-red-400 text-sm mt-1">{formErrors.email}</p>}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Create Password</label>
+          <div className="mb-5">
+            <label htmlFor="password" className="block text-sm font-medium text-white">Password</label>
             <div className="relative">
               <input
-                type={passwordVisible ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                className="w-full px-4 py-3 rounded-xl bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-inner"
+                type={formData.showPassword ? 'text' : 'password'}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full mt-2 p-3 rounded-md bg-white/20 text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="Enter your password"
+                required
               />
               <button
                 type="button"
-                onClick={() => setPasswordVisible(!passwordVisible)}
-                className="absolute inset-y-0 right-3 flex items-center text-gray-300"
+                onClick={() =>
+                  setFormData({ ...formData, showPassword: !formData.showPassword })
+                }
+                className="absolute inset-y-0 right-3 flex items-center text-white text-sm"
               >
-                {passwordVisible ? 'Hide' : 'Show'}
+                {formData.showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Confirm Password</label>
+          <div className="mb-5">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-white">Confirm Password</label>
             <div className="relative">
               <input
-                type={confirmPasswordVisible ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
-                className="w-full px-4 py-3 rounded-xl bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-inner"
+                type={formData.showConfirmPassword ? 'text' : 'password'}
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="w-full mt-2 p-3 rounded-md bg-white/20 text-white placeholder-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="Confirm your password"
+                required
               />
               <button
-                onClick={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
-                className="absolute inset-y-0 right-3 flex items-center text-gray-300"
+                type="button"
+                onClick={() =>
+                  setFormData({ ...formData, showConfirmPassword: !formData.showConfirmPassword })
+                }
+                className="absolute inset-y-0 right-3 flex items-center text-white text-sm"
               >
-                {confirmPasswordVisible ? 'Hide' : 'Show'}
+                {formData.showConfirmPassword ? 'Hide' : 'Show'}
               </button>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 mt-2">
+          <div className="flex items-center mt-4 space-x-3">
             <input
               type="checkbox"
               checked={captchaChecked}
               onChange={(e) => setCaptchaChecked(e.target.checked)}
-              className="accent-green-400 w-5 h-5"
+              className="accent-green-500 w-5 h-5"
             />
-            <label className="text-sm">I’m not a robot</label>
+            <label className="text-white text-sm">I’m not a robot</label>
           </div>
+          {formErrors.captcha && <p className="text-red-400 text-sm mt-1">{formErrors.captcha}</p>}
 
-          {error && (
-            <div className="text-red-400 text-sm font-medium mt-2">
-              {error}
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4 mt-8">
+          <div className="mt-6">
             <button
-              onClick={() => router.push('/login')}
-              className="bg-red-600 hover:bg-red-700 py-2 rounded-xl font-semibold transition duration-300 shadow-md hover:shadow-red-400"
-            >
-              ⬅ Back
-            </button>
-            <button
-              onClick={handleRegister}
+              type="submit"
               disabled={loading}
-              className="bg-emerald-500 hover:bg-emerald-600 py-2 rounded-xl font-semibold transition duration-300 shadow-md hover:shadow-emerald-400"
+              className="w-full py-3 text-white font-semibold rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 transition-all disabled:opacity-50"
             >
-              {loading ? 'Creating...' : '✅ Create'}
+              ✅ Create Account
             </button>
           </div>
-        </div>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => router.push('/login')}
+              className="text-sm text-gray-300 hover:text-white transition-colors"
+            >
+              Already have an account? <span className="font-semibold">Log in</span>
+            </button>
+          </div>
+        </form>
       </div>
     </main>
   );

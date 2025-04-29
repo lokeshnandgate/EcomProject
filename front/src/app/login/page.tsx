@@ -19,7 +19,6 @@ export default function LoginPage() {
 
   const currentState = userType === 'user' ? userState : businessState;
 
-  // ✅ Updated handleLogin function
   const handleLogin = () => {
     if (!identifier || !password) return;
 
@@ -32,7 +31,6 @@ export default function LoginPage() {
     }
   };
 
-  // Redirect after successful login
   useEffect(() => {
     if (userState.userInfo) {
       router.push('/dashboard');

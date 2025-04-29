@@ -1,3 +1,4 @@
+// app/business-register/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -9,7 +10,9 @@ import { registerUser } from '@/app/redux/businessreg/action';
 export default function BusinessRegisterPage() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  const { loading, error, userInfo } = useSelector((state: RootState) => state.businessUser);
+  const { loading, error, successMessage } = useSelector(
+    (state: RootState) => state.businessRegister // Correct slice name
+  );
 
   const [formData, setFormData] = useState({
     username: '',
@@ -84,10 +87,11 @@ export default function BusinessRegisterPage() {
   };
 
   useEffect(() => {
-    if (userInfo) {
+    const token = localStorage.getItem('token'); // Retrieve token from local storage or replace with appropriate logic
+    if (token) {
       router.push('/login');
     }
-  }, [userInfo, router]);
+  }, [router]);
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-indigo-800 via-purple-800 to-blue-700">
@@ -96,6 +100,7 @@ export default function BusinessRegisterPage() {
 
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         {loading && <p className="text-white text-sm mb-4">Registering...</p>}
+        {successMessage && <p className="text-green-500 text-sm mb-4">{successMessage}</p>}
 
         <form onSubmit={handleSubmit}>
           <div className="mb-5">

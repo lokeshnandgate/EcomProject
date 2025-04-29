@@ -19,11 +19,14 @@ export const registerUser = createAsyncThunk(
         email,
         password,
       });
-      const data = response.data;
-      if (!data.token || !data.userId || !data.userType) {
-        return rejectWithValue('Invalid register response: Missing token, userId, or userType');
+
+      const { userId, token, message } = response.data;
+
+      if (!token || !userId) {
+        return rejectWithValue('Invalid response from server: Missing token or userId');
       }
-      return data;
+
+      return { userId, token, message };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Registration failed');
     }

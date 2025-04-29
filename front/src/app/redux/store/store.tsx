@@ -1,8 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import productReducer from '../products/slice';
 import { userReducer, businessReducer } from '../login/slice';
-import registerReducer from '../userreg/slice';
-import businessUserReducer from '../businessreg/slice';
+import businessRegisterReducer from '../businessreg/slice';  // Corrected import name
 import profileReducer from '../profile/slice';
 
 export const store = configureStore({
@@ -10,8 +9,7 @@ export const store = configureStore({
     products: productReducer,
     user: userReducer,
     business: businessReducer,
-    register: registerReducer,
-    businessUser: businessUserReducer,
+    businessRegister: businessRegisterReducer,  // Use the correct name here
     profile: profileReducer,
   },
   devTools: process.env.NODE_ENV !== 'production',

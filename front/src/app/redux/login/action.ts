@@ -1,10 +1,10 @@
-// login/action.ts
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
 export interface LoginPayload {
   identifier: string;
   password: string;
+  userType: 'user' | 'business';
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -12,13 +12,12 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 // User Login
 export const loginUser = createAsyncThunk(
   'user/login',
-  async ({ identifier, password }: LoginPayload, { rejectWithValue }) => {
+  async ({ identifier, password, userType }: LoginPayload, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/api/auth/login/user`, {
+      const response = await axios.post(`${API_BASE}/api/login/login`, {
         identifier,
         password,
       });
-      // The backend should return: { token, userId, userType, ...other user data }
       const data = response.data;
       if (!data.token || !data.userId || !data.userType) {
         return rejectWithValue('Invalid login response: Missing token, userId, or userType');
@@ -33,15 +32,14 @@ export const loginUser = createAsyncThunk(
 // Business Login
 export const loginBusiness = createAsyncThunk(
   'business/login',
-  async ({ identifier, password }: LoginPayload, { rejectWithValue }) => {
+  async ({ identifier, password, userType }: LoginPayload, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/api/auth/login/business`, {
+      const response = await axios.post(`${API_BASE}/api/login/businesslogin`, {
         identifier,
         password,
       });
-      // The backend should return: { token, userId, userType, ...other business data }
       const data = response.data;
-       if (!data.token || !data.userId || !data.userType) {
+      if (!data.token || !data.userId || !data.userType) {
         return rejectWithValue('Invalid login response: Missing token, userId, or userType');
       }
       return data;

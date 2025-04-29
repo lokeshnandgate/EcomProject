@@ -1,9 +1,15 @@
 // redux/slices/userSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { registerUser } from './action';
+import { registerUser } from '../../userreg/action';
+
+interface UserInfo {
+  userId: string;
+  token: string;
+  message?: string;
+}
 
 interface UserState {
-  userInfo: any;
+  userInfo: UserInfo | null;
   loading: boolean;
   error: string | null;
 }
@@ -20,21 +26,19 @@ const userSlice = createSlice({
   reducers: {
     logout: (state) => {
       state.userInfo = null;
-      sessionStorage.removeItem('userInfo');
+      localStorage.removeItem('userToken');
     },
   },
   extraReducers: (builder) => {
     builder
-      
-      // Register
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(registerUser.fulfilled, (state, action: PayloadAction<any>) => {
+      .addCase(registerUser.fulfilled, (state, action: PayloadAction<UserInfo>) => {
         state.loading = false;
         state.userInfo = action.payload;
-        sessionStorage.setItem('userInfo', JSON.stringify(action.payload));
+        localStorage.setItem('userToken', action.payload.token);
       })
       .addCase(registerUser.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;

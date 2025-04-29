@@ -3,17 +3,15 @@ import { loginUser, loginBusiness } from './action';
 
 // -------------------- User State and Slice --------------------
 interface UserState {
-  user: any;
-  role: string;
   userInfo: any;
+  role: string;
   loading: boolean;
   error: string | null;
 }
 
 const initialUserState: UserState = {
-  user: null,
-  role: '',
   userInfo: null,
+  role: '',
   loading: false,
   error: null,
 };
