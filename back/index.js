@@ -7,10 +7,7 @@ const userloginRoutes = require('./login/routes');
 const businessRoutes = require('./businessreg/routes');
 const productRoutes = require('./product/routes');
 const userregRoutes = require('./userreg/routes');
-const getUserProfile = require('./profile/routes');
-const updateUserProfile = require('./profile/routes');
-const getBusinessUserProfile = require('./profile/routes');
-const updateBusinessProfile = require('./profile/routes');
+const profile = require('./profile/routes');
 const dotenv = require('dotenv');
 
 // Load environment variables
@@ -44,10 +41,7 @@ app.use('/api/login', userloginRoutes);
 app.use('/api/businessreg', businessRoutes);
 app.use('/api/products', productRoutes); 
 app.use('/api/userreg', userregRoutes);
-app.use('/api/uprofile',getUserProfile)
-app.use('/api/updateuser',updateUserProfile)
-app.use('/api/bprofile',getBusinessUserProfile)
-app.use('/api/updatebusiness', updateBusinessProfile)
+app.use('/api/profile',profile);
 
 // Start the server after DB connection
 connectDB().then(() => {

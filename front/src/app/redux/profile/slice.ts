@@ -1,64 +1,153 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { fetchUserProfile, updateUserProfile } from './action';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import axios from 'axios';
+
+// Types
+interface UserProfile {
+  _id: string;
+  username: string;
+  email: string;
+  contactNumber?: string;
+  locationUrl?: string;
+  address?: string;
+  about?: string;
+  profilePicture?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+interface BusinessProfile extends UserProfile {
+  businessType?: string;
+}
 
 interface ProfileState {
-  userInfo: any;
+  profile: UserProfile | BusinessProfile | null;
   loading: boolean;
   error: string | null;
 }
 
+// Initial State
 const initialState: ProfileState = {
-  userInfo: null,
+  profile: null,
   loading: false,
   error: null,
 };
 
+// Thunks
+export const fetchUserProfile = createAsyncThunk(
+  'profile/fetchUserProfile',
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`/api/uprofile/user/profile/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch user profile');
+    }
+  }
+);
+
+export const fetchBusinessProfile = createAsyncThunk(
+  'profile/fetchBusinessProfile',
+  async (businessId: string, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`/api/bprofile/business/profile/${businessId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch business profile');
+    }
+  }
+);
+
+export const updateUserProfile = createAsyncThunk(
+  'profile/updateUserProfile',
+  async (profileData: Partial<UserProfile>, { rejectWithValue }) => {
+    try {
+      const response = await axios.put(`/api/profile/updateuser`, profileData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update user profile');
+    }
+  }
+);
+
+export const updateBusinessProfile = createAsyncThunk(
+  'profile/updateBusinessProfile',
+  async (profileData: Partial<BusinessProfile>, { rejectWithValue }) => {
+    try {
+      const response = await axios.put(`//api/updatebusiness/business/updateprofile/`, profileData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update business profile');
+    }
+  }
+);
+
+// Slice
 const profileSlice = createSlice({
   name: 'profile',
   initialState,
   reducers: {
-    // You can add any additional actions if needed, such as resetting error state
-    resetError: (state) => {
+    clearProfile: (state) => {
+      state.profile = null;
       state.error = null;
     },
   },
   extraReducers: (builder) => {
-    // Handle fetch user profile actions
     builder
+      // Fetch User
       .addCase(fetchUserProfile.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchUserProfile.fulfilled, (state, action: PayloadAction<any>) => {
+      .addCase(fetchUserProfile.fulfilled, (state, action) => {
         state.loading = false;
-        state.userInfo = action.payload;
+        state.profile = action.payload;
       })
       .addCase(fetchUserProfile.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload && typeof action.payload === 'object' && 'message' in action.payload 
-          ? (action.payload as { message: string }).message 
-          : 'Failed to fetch profile';
-      });
+        state.error = action.payload as string;
+      })
 
-    // Handle update user profile actions
-    builder
-      .addCase(updateUserProfile.pending, (state) => {
+      // Update User
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.profile = action.payload;
+      })
+
+      // Fetch Business
+      .addCase(fetchBusinessProfile.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(updateUserProfile.fulfilled, (state, action: PayloadAction<any>) => {
+      .addCase(fetchBusinessProfile.fulfilled, (state, action) => {
         state.loading = false;
-        state.userInfo = action.payload; 
+        state.profile = action.payload;
       })
-      .addCase(updateUserProfile.rejected, (state, action) => {
+      .addCase(fetchBusinessProfile.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload && typeof action.payload === 'object' && 'message' in action.payload 
-          ? (action.payload as { message: string }).message 
-          : 'Failed to update profile';
+        state.error = action.payload as string;
+      })
+
+      // Update Business
+      .addCase(updateBusinessProfile.fulfilled, (state, action) => {
+        state.profile = action.payload;
       });
   },
 });
 
-export const { resetError } = profileSlice.actions;
-
+export const { clearProfile } = profileSlice.actions;
 export default profileSlice.reducer;

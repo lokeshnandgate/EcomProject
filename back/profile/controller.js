@@ -1,11 +1,11 @@
 
 // Get individual user profile by ID
-const User = require('../userreg/modal'); // adjust path if different
-const Business = require('../businessreg/modal'); // adjust path if different
+const User = require('../userreg/modal');
+const Business = require('../businessreg/modal');
 
 // Get individual user profile by ID
 const getUserProfile = async (req, res) => {
-  const { id } = req.body; // Get user ID from request body
+  const { id } = req.body; 
 
   if (!id) {
     return res.status(400).json({ message: 'User ID is required.' });
@@ -13,7 +13,7 @@ const getUserProfile = async (req, res) => {
 
   try {
     // Find user by ID
-    const user = await User.findById(id).select('-password -__v'); // Exclude password and __v from the result
+    const user = await User.findById(id).select('-password -__v'); 
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
@@ -131,21 +131,6 @@ const updateBusinessProfile = async (req, res) => {
     res.status(500).json({ message: 'Server error while updating profile.' });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 module.exports = {
