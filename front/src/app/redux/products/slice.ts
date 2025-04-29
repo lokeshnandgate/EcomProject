@@ -1,4 +1,3 @@
-// redux/products/productSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { fetchProducts, addProduct, updateProductById, deleteProductById } from './action';
 

@@ -1,58 +1,62 @@
+// redux/profile/profileActions.ts
+import { createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
-import { AppDispatch } from '../store/store';
-import {
-  fetchUserProfile,
-  fetchBusinessProfile,
-  updateUserProfile,
-  updateBusinessProfile,
-  clearProfile,
-} from '../profile/slice';
 
-// Fetch User Profile
-const getUserProfile = (userId: string) => async (dispatch: AppDispatch) => {
-  try {
-    await dispatch(fetchUserProfile(userId));
-  } catch (error) {
-    console.error('Failed to fetch user profile:', error);
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+
+// Fetch user profile
+export const fetchUserProfile = createAsyncThunk(
+  'profile/fetchUserProfile',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${API_URL}/api/profile/user/profile`, {
+        id, 
+      });
+      return response.data.user;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Error fetching user profile');
+    }
   }
-};
+);
 
-// Fetch Business Profile
- const getBusinessProfile = (businessId: string) => async (dispatch: AppDispatch) => {
-  try {
-    await dispatch(fetchBusinessProfile(businessId));
-  } catch (error) {
-    console.error('Failed to fetch business profile:', error);
+
+// Update user profile
+export const updateUserProfile = createAsyncThunk(
+  'profile/updateUserProfile',
+  async (formData: any, { rejectWithValue }) => {
+    try {
+      const response = await axios.put(`${API_URL}/api/profile/user/updateprofile`, formData);
+      return response.data.user;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Error updating user profile');
+    }
   }
-};
+);
 
-// Update User Profile
-const updateUserProfileDetails = (profileData: Partial<any>) => async (dispatch: AppDispatch) => {
-  try {
-    await dispatch(updateUserProfile(profileData));
-  } catch (error) {
-    console.error('Failed to update user profile:', error);
+// Fetch business profile
+export const fetchBusinessProfile = createAsyncThunk(
+  'profile/fetchBusinessProfile',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${API_URL}/api/profile/business/profile`, {
+        id, 
+      });
+      return response.data.businessUser;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Error fetching business profile');
+    }
   }
-};
+);
 
-// Update Business Profile
-const updateBusinessProfileDetails = (profileData: Partial<any>) => async (dispatch: AppDispatch) => {
-  try {
-    await dispatch(updateBusinessProfile(profileData));
-  } catch (error) {
-    console.error('Failed to update business profile:', error);
+// Update business profile
+export const updateBusinessProfile = createAsyncThunk(
+  'profile/updateBusinessProfile',
+  async (formData: any, { rejectWithValue }) => {
+    try {
+      const response = await axios.put(`${API_URL}/api/profile/business/updateprofile`, formData);
+      return response.data.business;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Error updating business profile');
+    }
   }
-};
-
-// Clear Profile
- const clearProfileData = () => (dispatch: AppDispatch) => {
-  dispatch(clearProfile());
-};
-
-export {
-  getUserProfile,
-  getBusinessProfile,
-  updateUserProfileDetails,
-  updateBusinessProfileDetails,
-  clearProfileData,
-};
+);

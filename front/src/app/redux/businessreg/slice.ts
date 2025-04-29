@@ -20,7 +20,7 @@ const userSlice = createSlice({
   reducers: {
     logout: (state) => {
       state.userInfo = null;
-      localStorage.removeItem('userInfo');
+      sessionStorage.removeItem('userInfo');
     },
   },
   extraReducers: (builder) => {
@@ -32,7 +32,7 @@ const userSlice = createSlice({
       .addCase(registerUser.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.userInfo = action.payload;
-        localStorage.setItem('userInfo', JSON.stringify(action.payload));
+        sessionStorage.setItem('userInfo', JSON.stringify(action.payload));
       })
       .addCase(registerUser.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;

@@ -11,6 +11,8 @@ interface UserState {
 }
 
 const initialUserState: UserState = {
+  user: null,
+  role: '',
   userInfo: null,
   loading: false,
   error: null,
@@ -22,7 +24,7 @@ export const userSlice = createSlice({
   reducers: {
     logout: (state) => {
       state.userInfo = null;
-      localStorage.removeItem('userInfo');
+      sessionStorage.removeItem('userInfo');
     },
   },
   extraReducers: (builder) => {
@@ -34,7 +36,7 @@ export const userSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.userInfo = action.payload;
-        localStorage.setItem('userInfo', JSON.stringify(action.payload));
+        sessionStorage.setItem('userInfo', JSON.stringify(action.payload));
       })
       .addCase(loginUser.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;
@@ -62,7 +64,7 @@ export const businessSlice = createSlice({
   reducers: {
     logoutBusiness: (state) => {
       state.businessInfo = null;
-      localStorage.removeItem('businessInfo');
+      sessionStorage.removeItem('businessInfo');
     },
   },
   extraReducers: (builder) => {
@@ -74,7 +76,7 @@ export const businessSlice = createSlice({
       .addCase(loginBusiness.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.businessInfo = action.payload;
-        localStorage.setItem('businessInfo', JSON.stringify(action.payload));
+        sessionStorage.setItem('businessInfo', JSON.stringify(action.payload));
       })
       .addCase(loginBusiness.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;

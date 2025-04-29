@@ -1,4 +1,3 @@
-
 // Get individual user profile by ID
 const User = require('../userreg/modal');
 const Business = require('../businessreg/modal');
@@ -94,44 +93,44 @@ const getBusinessUserProfile = async (req, res) => {
   }
 };
 
+
+
 const updateBusinessProfile = async (req, res) => {
-  const { id } = req.body; // Get business ID from the request body
-  const { username, email, contactNumber, locationUrl, address, about, businessType } = req.body; // Get updated data from request body
-
-  if (!id) {
-    return res.status(400).json({ message: 'Business ID is required.' });
-  }
-
   try {
-    // Find business by ID
-    const business = await Business.findById(id);
+    const { id, username, email, contactNumber, businessType, locationUrl, about, address } = req.body;
 
-    if (!business) {
-      return res.status(404).json({ message: 'Business not found.' });
+    // Fetch current business
+    const existingBusiness = await Business.findById(id);
+
+    if (!existingBusiness) {
+      return res.status(404).json({ message: 'Business not found' });
     }
 
-    // Update the business profile with new values
-    business.username = username || business.username;
-    business.email = email || business.email;
-    business.contactNumber = contactNumber || business.contactNumber;
-    business.locationUrl = locationUrl || business.locationUrl;
-    business.address = address || business.address;
-    business.about = about || business.about;
-    business.businessType = businessType || business.businessType;
+    // Check if new username exists and belongs to a different user
+    if (username && username !== existingBusiness.username) {
+      const usernameExists = await Business.findOne({ username });
+      if (usernameExists) {
+        return res.status(400).json({ message: 'Username already taken' });
+      }
+    }
 
-    // Save the updated business profile
-    await business.save();
+    // Update fields
+    existingBusiness.username = username || existingBusiness.username;
+    existingBusiness.email = email || existingBusiness.email;
+    existingBusiness.contactNumber = contactNumber || existingBusiness.contactNumber;
+    existingBusiness.businessType = businessType || existingBusiness.businessType;
+    existingBusiness.locationUrl = locationUrl || existingBusiness.locationUrl;
+    existingBusiness.about = about || existingBusiness.about;
+    existingBusiness.address = address || existingBusiness.address;
 
-    res.status(200).json({
-      message: 'Business profile updated successfully.',
-      business,
-    });
+    await existingBusiness.save();
+
+    res.status(200).json({ message: 'Profile updated successfully', business: existingBusiness });
   } catch (error) {
     console.error('Error updating business profile:', error);
-    res.status(500).json({ message: 'Server error while updating profile.' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
-
 
 module.exports = {
   updateUserProfile,

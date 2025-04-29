@@ -34,38 +34,53 @@ export const fetchProducts = createAsyncThunk<Product[]>(
 export const addProduct = createAsyncThunk<Product, Partial<Product>>(
   'products/addProduct',
   async (productData: Partial<Product>) => {
-    const response = await axios.post<Product>(`${API_URL}/api/products/createp`, productData);
+    const token = localStorage.getItem('token');
+    const response = await axios.post<Product>(`${API_URL}/api/products/createp`, productData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     return response.data;
   }
 );
 
 // Update a product
-  export const updateProductById = createAsyncThunk<Product, Product>(
-    'products/updateProduct',
-    async (updatedProduct, { rejectWithValue }) => {
-      try {
-        const response = await axios.put<ApiResponse<Product>>(
-          `${API_URL}/api/products/updatep`,
-          {
-            productId: updatedProduct._id,
-            ...updatedProduct
-          }
-        );
-        return response.data.data;
-      } catch (err: any) {
-        return rejectWithValue(
-          err.response?.data?.message || 'Failed to update product'
-        );
-      }
+export const updateProductById = createAsyncThunk<Product, Product>(
+  'products/updateProduct',
+  async (updatedProduct, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token'); // Get the token
+      const response = await axios.put<ApiResponse<Product>>(
+        `${API_URL}/api/products/updatep`,
+        {
+          productId: updatedProduct._id,
+          ...updatedProduct
+        },
+        { // Add the authorization header
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data?.message || 'Failed to update product'
+      );
     }
-  );
+  }
+);
 
 // Delete a product
 export const deleteProductById = createAsyncThunk<string, string>(
   'products/deleteProductById',
   async (id) => {
+    const token = localStorage.getItem('token');
     await axios.delete(`${API_URL}/api/products/deletep`, {
-      data: { id }, 
+      data: { id },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      }
     });
     return id;
   }

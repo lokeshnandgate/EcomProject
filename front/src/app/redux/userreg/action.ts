@@ -1,3 +1,4 @@
+// userreg/action.ts
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
@@ -13,11 +14,15 @@ export const registerUser = createAsyncThunk(
   'user/register',
   async ({ username, email, password }: RegisterPayload, { rejectWithValue }) => {
     try {
-      const { data } = await axios.post(`${API_BASE_URL}/api/userreg/register`, {
+      const response = await axios.post(`${API_BASE_URL}/api/userreg/register`, {
         username,
         email,
         password,
       });
+      const data = response.data;
+      if (!data.token || !data.userId || !data.userType) {
+        return rejectWithValue('Invalid register response: Missing token, userId, or userType');
+      }
       return data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Registration failed');

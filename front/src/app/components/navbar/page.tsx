@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Profile from '/Users/lokeshs/Desktop/@loki/front/src/app/components/profile/page';
 const Navbar: React.FC = () => {
   const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -17,6 +16,9 @@ const Navbar: React.FC = () => {
 
   const handleLogout = () => {
     alert('Do you want to logout?');
+
+    sessionStorage.removeItem('userInfo');
+    sessionStorage.removeItem('businessInfo');
     router.push('/');
   };
 
