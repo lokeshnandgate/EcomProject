@@ -6,12 +6,15 @@ const {
   updateProduct,
   deleteProduct
 } = require('./controller');
-const { verifyToken } = require('./controller'); // Import the verifyToken middleware
+const { verifyToken } = require('../middleware/auth');
 
-// Apply verifyToken middleware to the routes that need protection
-router.get('/getp', getAllProducts); // No protection needed for GET all products
+// Public
+router.get('/getp', getAllProducts);
+
+// Protected
 router.post('/createp', verifyToken, createProduct);
 router.put('/updatep', verifyToken, updateProduct);
-router.delete('/deletep', verifyToken, deleteProduct);
+
+router.delete('/deletep/:id', verifyToken, deleteProduct);
 
 module.exports = router;

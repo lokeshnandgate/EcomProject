@@ -19,6 +19,7 @@ export const loginUser = createAsyncThunk(
         password,
       });
       const data = response.data;
+      sessionStorage.setItem('token', data.token);
       if (!data.token || !data.userId || !data.userType) {
         return rejectWithValue('Invalid login response: Missing token, userId, or userType');
       }
@@ -39,6 +40,8 @@ export const loginBusiness = createAsyncThunk(
         password,
       });
       const data = response.data;
+      sessionStorage.setItem('token', data.token);
+
       if (!data.token || !data.userId || !data.userType) {
         return rejectWithValue('Invalid login response: Missing token, userId, or userType');
       }

@@ -19,6 +19,7 @@ const Navbar: React.FC = () => {
 
     sessionStorage.removeItem('userInfo');
     sessionStorage.removeItem('businessInfo');
+    sessionStorage.removeItem('token');
     router.push('/');
   };
 
