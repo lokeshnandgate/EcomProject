@@ -10,7 +10,7 @@ import {
 } from '../../../redux/profile/action';
 import Image from 'next/image';
 
-export default function ProfilePage() {
+export default function EditProfilePage() {
   const dispatch = useAppDispatch();
   const { user, business, loading, error } = useAppSelector((state) => state.profile);
 
@@ -25,21 +25,21 @@ export default function ProfilePage() {
 
     if (storedBusinessUser) {
       const parsed = JSON.parse(storedBusinessUser);
-      const { _id, userType } = parsed.user;
-      if (userType === 'businessUser') {
+      const user = parsed?.user || parsed;
+      if (user?.userType === 'businessUser' && user?._id) {
         setUserType('business');
-        setUserId(_id);
-        dispatch(fetchBusinessProfile(_id));
+        setUserId(user._id);
+        dispatch(fetchBusinessProfile(user._id));
       }
     }
 
     if (storedUser) {
       const parsed = JSON.parse(storedUser);
-      const { _id, userType } = parsed.user;
-      if (userType === 'customerUser') {
+      const user = parsed?.user || parsed;
+      if (user?.userType === 'User' && user?._id) {
         setUserType('user');
-        setUserId(_id);
-        dispatch(fetchUserProfile(_id));
+        setUserId(user._id);
+        dispatch(fetchUserProfile(user._id));
       }
     }
   }, [dispatch]);
@@ -55,7 +55,9 @@ export default function ProfilePage() {
     }
   }, [user, business, userType]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
@@ -64,18 +66,20 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setPreviewImage(reader.result as string);
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setPreviewImage(base64String);
+        setFormData((prev: any) => ({ ...prev, profilePic: base64String }));
+      };
       reader.readAsDataURL(file);
-      setFormData((prev: any) => ({ ...prev, profilePic: file }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!userId) return;
 
-    const submitData: any = {
+    const submitData = {
       id: userId,
       username: formData.username,
       email: formData.email,
@@ -83,92 +87,84 @@ export default function ProfilePage() {
       locationUrl: formData.locationUrl,
       address: formData.address,
       about: formData.about,
+      profilePic: formData.profilePic,
+      ...(userType === 'business' && { businessType: formData.businessType }),
     };
 
     if (userType === 'business') {
-      submitData.businessType = formData.businessType;
       await dispatch(updateBusinessProfile(submitData));
-    } else if (userType === 'user') {
+    } else {
       await dispatch(updateUserProfile(submitData));
     }
+
+    window.location.href = '/components/profile';
   };
 
-  if (loading) return <p className="text-center mt-10 text-blue-500 animate-pulse">Loading your profile...</p>;
-  if (error) return <p className="text-center mt-10 text-red-500">Error: {error}</p>;
+  if (loading) return <p className="text-center mt-10 text-blue-300 animate-pulse">Loading your profile...</p>;
+  if (error) return <p className="text-center mt-10 text-red-400">Error: {error}</p>;
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10 bg-white shadow-xl rounded-3xl mt-10 border border-blue-100">
-      <h1 className="text-4xl font-bold text-center text-blue-800 mb-10">Edit Your Profile</h1>
+    <div className="min-h-screen bg-gradient-to-br from-[#e0c3fc] via-[#8ec5fc] to-[#a1c4fd] flex justify-center items-center p-6">
+      <div className="w-full max-w-3xl bg-white/30 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-white/40 text-gray-900">
+        <h1 className="text-3xl font-bold text-center mb-8">Edit Your Profile</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
-        {/* Profile Picture */}
-        <div className="flex flex-col items-center">
-          <Image
-            src={previewImage || '/default-avatar.png'}
-            width={120}
-            height={120}
-            className="rounded-full border shadow"
-            alt="Profile Picture"
-          />
-          <input type="file" accept="image/*" onChange={handleImageChange} className="mt-3" />
-        </div>
-
-        {/* Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block font-medium">Username</label>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex flex-col items-center">
+            <Image
+              src={previewImage || '/default-avatar.png'}
+              width={100}
+              height={100}
+              className="rounded-full object-cover border-4 border-white shadow-md"
+              alt="Profile"
+            />
             <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="mt-3 text-sm text-gray-800"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input
+              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
               type="text"
               name="username"
+              placeholder="Username"
               value={formData.username || ''}
               onChange={handleInputChange}
-              className="w-full border px-4 py-2 rounded"
             />
-          </div>
-
-          <div>
-            <label className="block font-medium">Email</label>
             <input
+              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
               type="email"
               name="email"
+              placeholder="Email"
               value={formData.email || ''}
               onChange={handleInputChange}
-              className="w-full border px-4 py-2 rounded"
             />
-          </div>
-
-          <div>
-            <label className="block font-medium">Contact Number</label>
             <input
+              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
               type="text"
               name="contactNumber"
+              placeholder="Contact Number"
               value={formData.contactNumber || ''}
               onChange={handleInputChange}
-              className="w-full border px-4 py-2 rounded"
             />
-          </div>
-
-          <div>
-            <label className="block font-medium">Location URL</label>
             <input
+              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
               type="text"
               name="locationUrl"
+              placeholder="Location URL"
               value={formData.locationUrl || ''}
               onChange={handleInputChange}
-              className="w-full border px-4 py-2 rounded"
             />
-          </div>
 
-          {userType === 'business' && (
-            <div className="mb-5">
-              <label htmlFor="businessType" className="block text-sm font-medium text-gray-700">Business Type</label>
+            {userType === 'business' && (
               <select
-                id="businessType"
                 name="businessType"
                 value={formData.businessType || ''}
                 onChange={handleInputChange}
-                className="w-full mt-2 p-3 rounded-md bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                required
+                className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
               >
                 <option value="">Select Business Type</option>
                 <option value="onlineProductMarketplace">🛍 Online Product Marketplace</option>
@@ -181,42 +177,36 @@ export default function ProfilePage() {
                 <option value="digitalProductsStore">💾 Digital Products Store</option>
                 <option value="hyperlocalFarmDelivery">🌿 Hyperlocal Farm/Food Delivery</option>
               </select>
-            </div>
-          )}
+            )}
 
-          <div>
-            <label className="block font-medium">Address</label>
             <input
+              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
               type="text"
               name="address"
+              placeholder="Address"
               value={formData.address || ''}
               onChange={handleInputChange}
-              className="w-full border px-4 py-2 rounded"
             />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block font-medium">About</label>
             <textarea
+              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400 col-span-2"
               name="about"
-              rows={4}
+              placeholder="About"
+              rows={3}
               value={formData.about || ''}
               onChange={handleInputChange}
-              className="w-full border px-4 py-2 rounded"
             />
           </div>
-        </div>
 
-        {/* Submit */}
-        <div className="text-center mt-6">
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700"
-          >
-            Save Profile
-          </button>
-        </div>
-      </form>
+          <div className="text-center">
+            <button
+              type="submit"
+              className="bg-gradient-to-r from-green-400 to-blue-500 text-white px-6 py-2 rounded-lg shadow-lg hover:brightness-110 hover:scale-105 transition duration-200"
+            >
+              Save Profile
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
