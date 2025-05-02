@@ -1,6 +1,37 @@
 const Product = require('./modal');
-const bcrypt = require('bcryptjs');
-// GET all products
+const jwt = require('jsonwebtoken');
+
+// JWT Verification Middleware
+exports.verifyToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(400).json({ message: 'Authorization header is missing' });
+  }
+
+  if (!authHeader.startsWith('Bearer ')) {
+    return res.status(400).json({ 
+      message: 'Authorization header format is incorrect. Use "Bearer <token>"' 
+    });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(403).json({ 
+        message: 'Token expired, please log in again' 
+      });
+    }
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+};
+
+// GET all products (public endpoint)
 exports.getAllProducts = async (req, res) => {
   try {
     const products = await Product.find().sort({ createdAt: -1 });
@@ -10,9 +41,14 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
-// POST a new product
+// POST a new product (protected)
 exports.createProduct = async (req, res) => {
   try {
+    // Verify user role if needed
+    if (!req.user || !req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
     const newProduct = new Product(req.body);
     const saved = await newProduct.save();
     res.status(201).json(saved);
@@ -20,8 +56,15 @@ exports.createProduct = async (req, res) => {
     res.status(400).json({ error: 'Failed to create product' });
   }
 };
+
+// PUT update a product (protected)
 exports.updateProduct = async (req, res) => {
   try {
+    // Verify user role if needed
+    if (!req.user || !req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
     const { productId, title, description, price, category, image, inStock } = req.body;
 
     if (!productId) {
@@ -64,33 +107,22 @@ exports.updateProduct = async (req, res) => {
     });
   }
 };
-// // PUT update a product
-// exports.updateProduct = async (req, res) => {
-//   const { id,...rest } = req.body;
-//   console.log('_id', id);
-  
-//   try {
- 
-//     const existingProduct = await Product.findOne({_id:id});
- 
-//     if (!existingProduct) {
-//       return res.status(404).json({ error: 'Product not found' });
-//     }
-//     const updated = await Product.findOneAndUpdate({_id:id}, rest, { new: true });
- 
-//     if (!updated) return res.status(404).json({ error: 'Product not found' });
-//     res.status(200).json(updated);
-//   } catch (err) {
-//     res.status(400).json({ error: 'Failed to update product' });
-//   }
-// };
 
-// DELETE a product
+// DELETE a product (protected)
 exports.deleteProduct = async (req, res) => {
-  const { id } = req.body;
   try {
+    // Verify user role if needed
+    if (!req.user || !req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const { id } = req.body;
     const deleted = await Product.findByIdAndDelete(id);
-    if (!deleted) return res.status(404).json({ error: 'Product not found' });
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
     res.status(200).json({ message: 'Product deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete product' });

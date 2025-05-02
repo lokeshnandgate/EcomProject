@@ -4,12 +4,16 @@ const {
   getAllProducts,
   createProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  verifyToken
 } = require('./controller');
 
+// Public routes
 router.get('/getp', getAllProducts);
-router.post('/createp', createProduct);
-router.put('/updatep', updateProduct);
-router.delete('/deletep', deleteProduct);
+
+// Protected routes
+router.post('/createp', verifyToken, createProduct);
+router.put('/updatep', verifyToken, updateProduct);
+router.delete('/deletep', verifyToken, deleteProduct);
 
 module.exports = router;
