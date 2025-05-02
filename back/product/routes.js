@@ -6,15 +6,10 @@ const {
   updateProduct,
   deleteProduct
 } = require('./controller');
-const { verifyToken } = require('../middleware/auth');
 
-// Public
 router.get('/getp', getAllProducts);
-
-// Protected
-router.post('/createp', verifyToken, createProduct);
-router.put('/updatep', verifyToken, updateProduct);
-
-router.delete('/deletep/:id', verifyToken, deleteProduct);
+router.post('/createp', createProduct);
+router.put('/updatep', updateProduct);
+router.delete('/deletep', deleteProduct);
 
 module.exports = router;

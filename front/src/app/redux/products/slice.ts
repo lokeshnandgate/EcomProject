@@ -1,17 +1,23 @@
+// redux/products/productSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import {
-  fetchProducts,
-  addProduct,
-  updateProductById,
-  deleteProductById,
-} from './action';
-import { Product } from './types';
+import { fetchProducts, addProduct, updateProductById, deleteProductById } from './action';
+
+// Define the Product type directly here
+interface Product {
+  _id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  image: string;
+  inStock: boolean;
+}
 
 interface ProductState {
-  list: Product[];            // List of products (array of Product objects)
-  loading: boolean;           // Loading state for async actions
-  error: string | null;       // Error state for handling errors
-  wishlist: Product[];        // Wishlist state for managing wishlist products
+  list: Product[];
+  loading: boolean;
+  error: string | null;
+  wishlist: Product[];
 }
 
 const initialState: ProductState = {
@@ -25,85 +31,44 @@ const productSlice = createSlice({
   name: 'products',
   initialState,
   reducers: {
-    // Add a product to the wishlist
     addToWishlist: (state, action: PayloadAction<Product>) => {
-      if (!state.wishlist.some(item => item._id === action.payload._id)) {
+      const exists = state.wishlist.find((item) => item._id === action.payload._id);
+      if (!exists) {
         state.wishlist.push(action.payload);
       }
     },
-
-    // Remove a product from the wishlist
     removeFromWishlist: (state, action: PayloadAction<string>) => {
-      state.wishlist = state.wishlist.filter(item => item._id !== action.payload);
-    },
-
-    // Clear error messages
-    clearError: (state) => {
-      state.error = null;
+      state.wishlist = state.wishlist.filter((item) => item._id !== action.payload);
     },
   },
   extraReducers: (builder) => {
     builder
-      // Fetch products
       .addCase(fetchProducts.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchProducts.fulfilled, (state, action: PayloadAction<Product[]>) => {
+      .addCase(fetchProducts.fulfilled, (state, action) => {
         state.loading = false;
         state.list = action.payload;
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.error.message || 'Failed to fetch products';
       })
-
-      // Add a new product
-      .addCase(addProduct.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+      .addCase(addProduct.fulfilled, (state, action) => {
+        state.list.push(action.payload);
       })
-      .addCase(addProduct.fulfilled, (state, action: PayloadAction<Product>) => {
-        state.loading = false;
-        state.list.unshift(action.payload);  // Adds new product at the beginning
+      .addCase(updateProductById.fulfilled, (state, action) => {
+        const index = state.list.findIndex((p) => p._id === action.payload._id);
+        if (index !== -1) {
+          state.list[index] = action.payload;
+        }
       })
-      .addCase(addProduct.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
-      // Update an existing product
-      .addCase(updateProductById.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(updateProductById.fulfilled, (state, action: PayloadAction<Product>) => {
-        state.loading = false;
-        const index = state.list.findIndex(p => p._id === action.payload._id);
-        if (index !== -1) state.list[index] = action.payload;
-      })
-      .addCase(updateProductById.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
-      // Delete a product
-      .addCase(deleteProductById.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(deleteProductById.fulfilled, (state, action: PayloadAction<string>) => {
-        state.loading = false;
-        state.list = state.list.filter(product => product._id !== action.payload);
-      })
-      .addCase(deleteProductById.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
+      .addCase(deleteProductById.fulfilled, (state, action) => {
+        state.list = state.list.filter((p) => p._id !== action.payload);
       });
   },
 });
 
-// Export actions to manage wishlist and errors
-export const { addToWishlist, removeFromWishlist, clearError } = productSlice.actions;
-
+export const { addToWishlist, removeFromWishlist } = productSlice.actions;
 export default productSlice.reducer;
