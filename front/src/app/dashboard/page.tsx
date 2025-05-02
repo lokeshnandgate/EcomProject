@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -6,11 +7,11 @@ import {
     fetchProducts,
     deleteProductById,
     updateProductById,
-    addProduct
 } from '@/app/redux/products/action';
 import { addToWishlist } from '@/app/redux/products/slice';
 import { RootState } from '@/app/redux/store/store';
 import Navbar from '../components/navbar/page';
+import Link from 'next/link';
 
 export default function DashboardPage() {
     const dispatch = useDispatch();
@@ -66,25 +67,10 @@ export default function DashboardPage() {
                 ...productPayload,
                 _id: editingProduct._id
             }));
-        } else {
-            await dispatch<any>(addProduct(productPayload));
         }
 
         setShowModal(false);
         setEditingProduct(null);
-    };
-
-    const handleAddNewProduct = () => {
-        setEditingProduct(null);
-        setFormData({
-            title: '',
-            description: '',
-            price: '',
-            category: '',
-            image: '',
-            inStock: true
-        });
-        setShowModal(true);
     };
 
     const filteredProducts = products.filter((product: any) =>
@@ -98,20 +84,7 @@ export default function DashboardPage() {
             <div className="p-10 min-h-screen bg-gradient-to-br from-yellow-100 via-white to-yellow-50">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-10 gap-4">
                     <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Product Dashboard</h1>
-                    {/* <button
-                            onClick={handleAddNewProduct}
-                            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2 rounded-lg shadow-lg transition duration-200"
-                        >
-                            + Add Product
-                        </button> */}
-                    {businessInfo && (
-                        <button
-                            onClick={handleAddNewProduct}
-                            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2 rounded-lg shadow-lg transition duration-200"
-                        >
-                            + Add Product
-                        </button>
-                    )}
+                   
                 </div>
 
                 <div className="mb-8 grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
@@ -199,7 +172,7 @@ export default function DashboardPage() {
                                 ×
                             </button>
                             <h2 className="text-2xl font-bold text-gray-800 text-center">
-                                {editingProduct ? 'Edit Product' : 'Add New Product'}
+                                Edit Product
                             </h2>
 
                             <div className="space-y-4">
@@ -310,7 +283,7 @@ export default function DashboardPage() {
                                 onClick={handleSubmit}
                                 className="w-full bg-gradient-to-r from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white font-semibold px-4 py-3 rounded-lg transition"
                             >
-                                {editingProduct ? 'Update Product' : 'Add Product'}
+                                Update Product
                             </button>
                         </div>
                     </div>

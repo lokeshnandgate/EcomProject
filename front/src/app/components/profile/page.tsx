@@ -62,6 +62,8 @@ export default function ProfileViewPage() {
           </button>
         </Link>
 
+   
+
         {/* Profile Info */}
         <div className="flex flex-col items-center text-center mb-8">
           <Image
@@ -108,6 +110,17 @@ export default function ProfileViewPage() {
               <p className="whitespace-pre-wrap">{profile.about}</p>
             </div>
           )}
+               {/* Add Product Button */}
+        {userType === 'business' && (
+          <div className="mt-8 flex justify-center">
+            <Link
+              href="/components/addproduct"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg transition duration-200"
+            >
+              + Add Product
+            </Link>
+          </div>
+        )}
         </div>
       </div>
     </div>
