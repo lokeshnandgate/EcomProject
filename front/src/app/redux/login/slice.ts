@@ -1,7 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { loginUser, loginBusiness } from './action';
 
-// -------------------- User State and Slice --------------------
 interface UserState {
   userInfo: any;
   role: string;
@@ -34,7 +33,6 @@ export const userSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.userInfo = action.payload;
-        sessionStorage.setItem('userInfo', JSON.stringify(action.payload));
       })
       .addCase(loginUser.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;
@@ -43,7 +41,6 @@ export const userSlice = createSlice({
   },
 });
 
-// -------------------- Business State and Slice --------------------
 interface BusinessState {
   businessInfo: any;
   loading: boolean;
@@ -74,7 +71,6 @@ export const businessSlice = createSlice({
       .addCase(loginBusiness.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.businessInfo = action.payload;
-        sessionStorage.setItem('businessInfo', JSON.stringify(action.payload));
       })
       .addCase(loginBusiness.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;
@@ -83,7 +79,6 @@ export const businessSlice = createSlice({
   },
 });
 
-// -------------------- Export Actions & Reducers --------------------
 export const { logout } = userSlice.actions;
 export const { logoutBusiness } = businessSlice.actions;
 

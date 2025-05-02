@@ -1,4 +1,3 @@
-// app/business-register/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -10,8 +9,8 @@ import { registerUser } from '@/app/redux/businessreg/action';
 export default function BusinessRegisterPage() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  const { loading, error, successMessage } = useSelector(
-    (state: RootState) => state.businessRegister // Correct slice name
+  const { loading, error, successMessage, userInfo } = useSelector(
+    (state: RootState) => state.businessRegister
   );
 
   const [formData, setFormData] = useState({
@@ -78,18 +77,24 @@ export default function BusinessRegisterPage() {
     }
 
     try {
-      await dispatch(registerUser(formData)).unwrap();
+      const result = await dispatch(registerUser(formData)).unwrap();
+
+      // Store user info in localStorage
+      localStorage.setItem('token', result.token);
+      localStorage.setItem('userId', result.userId);
+      localStorage.setItem('userType', result.userType);
+
       alert('Business registration successful!');
-      router.push('/login');
+      router.push('/dashboard');
     } catch (err: any) {
       alert(err);
     }
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token'); // Retrieve token from local storage or replace with appropriate logic
+    const token = localStorage.getItem('token');
     if (token) {
-      router.push('/login');
+      router.push('/dashboard');
     }
   }, [router]);
 

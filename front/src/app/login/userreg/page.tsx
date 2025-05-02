@@ -80,7 +80,7 @@ export default function UserRegisterPage() {
         password: formData.password,
       })).unwrap();
       alert('User registration successful!');
-      router.push('/login');
+      router.push('/dashboard');
     } catch (err: any) {
       alert(err);
     }
@@ -89,7 +89,7 @@ export default function UserRegisterPage() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      router.push('/login');
+      router.push('/dashboard');
     }
   }, [router]);
 
