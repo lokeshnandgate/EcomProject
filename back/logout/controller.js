@@ -1,5 +1,5 @@
-const tokenBlacklist = require('../utils/tokenBlacklist');
-
+// const tokenBlacklist = require('../utils/tokenBlacklist');
+const tokenBlacklist = new Set();
 exports.logoutUser = (req, res) => {
   const authHeader = req.headers.authorization;
 
