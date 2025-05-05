@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 
@@ -58,7 +58,11 @@ const Navbar: React.FC = () => {
       const response = await axios.get(`${API_URL}/api/products?search=${query}`);
       setSearchResults(response.data || []);
     } catch (error) {
-      console.error('Search error:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        console.warn('No products found for the search query.');
+      } else {
+        console.error('Search error:', error);
+      }
       setSearchResults([]);
     }
   };
