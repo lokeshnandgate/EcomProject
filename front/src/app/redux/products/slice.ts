@@ -9,6 +9,7 @@ interface Product {
   category: string;
   image: string;
   inStock: boolean;
+  addedBy: string;
 }
 
 interface ProductState {
@@ -16,7 +17,7 @@ interface ProductState {
   loading: boolean;
   error: string | null;
   wishlist: Product[];
-  operationError: string | null; // For CRUD operation errors
+  operationError: string | null; 
 }
 
 const initialState: ProductState = {

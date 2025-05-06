@@ -17,6 +17,8 @@ interface Product {
   category: string;
   image: string;
   inStock: boolean;
+  addedBy: string;
+
 }
 
 
@@ -25,15 +27,6 @@ export const fetchProducts = createAsyncThunk<Product[]>(
   'products/fetchProducts',
   async () => {
     const response = await axiosInstance.get<Product[]>(`/api/products/getp`);
-    return response.data;
-  }
-);
-
-// In your products/action.ts
-export const fetchMyProducts = createAsyncThunk<Product[]>(
-  'products/fetchMyProducts',
-  async () => {
-    const response = await axiosInstance.get<Product[]>('/api/products/my-products');
     return response.data;
   }
 );
