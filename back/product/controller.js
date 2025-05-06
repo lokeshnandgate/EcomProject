@@ -41,21 +41,31 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
-// POST a new product (protected)
+
+
 exports.createProduct = async (req, res) => {
   try {
-    // Verify user role if needed
-    if (!req.user || !req.user.id) {
+    // Verify user is authenticated
+    if (!req.user || !req.user.id || !req.user.username) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    const newProduct = new Product(req.body);
+    // Add both username and userId to the product
+    const newProduct = new Product({
+      ...req.body,
+      addedBy: req.user.username,
+      addedById: req.user.id
+    });
+
     const saved = await newProduct.save();
     res.status(201).json(saved);
   } catch (err) {
+    console.error('Product creation failed:', err);
     res.status(400).json({ error: 'Failed to create product' });
   }
 };
+
+
 
 // PUT update a product (protected)
 exports.updateProduct = async (req, res) => {

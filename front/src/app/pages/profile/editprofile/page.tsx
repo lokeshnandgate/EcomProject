@@ -97,7 +97,7 @@ export default function EditProfilePage() {
       await dispatch(updateUserProfile(submitData));
     }
 
-    window.location.href = '/components/profile';
+    window.location.href = '/pages/profile';
   };
 
   if (loading) return <p className="text-center mt-10 text-blue-300 animate-pulse">Loading your profile...</p>;

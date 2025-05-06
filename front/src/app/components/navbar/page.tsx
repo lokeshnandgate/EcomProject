@@ -11,7 +11,11 @@ const Navbar: React.FC = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
   const handleAddToCart = () => {
-    router.push('/components/addtocart');
+    router.push('/pages/addtocart');
+  };
+
+  const handleChat = () => {
+    router.push('/pages/chat');
   };
 
   const handleLogout = async () => {
@@ -80,26 +84,30 @@ const Navbar: React.FC = () => {
           className="search-input"
         />
 
-        <div className="profile">
-          <button onClick={() => router.push('/components/profile')} className="profile-icon">
-            <img src="/path-to-profile-icon.png" alt="Profile" />
+        <div className="icons-container">
+          <button onClick={() => router.push('/pages/chat')} className="icon-button">
+            <img src="/chat.svg" alt="Chat" />
           </button>
-        </div>
 
-        <div className="dropdown">
-          <button onClick={toggleDropdown} className="dropdown-button">
-            ▼
+          <button onClick={() => router.push('/pages/profile')} className="icon-button">
+            <img src="/profile.svg" alt="Profile" />
           </button>
-          {dropdownOpen && (
-            <div className="dropdown-menu">
-              <button onClick={handleAddToCart} className="dropdown-item">
-                Add to Cart
-              </button>
-              <button onClick={handleLogout} className="dropdown-item">
-                Logout
-              </button>
-            </div>
-          )}
+
+          <div className="dropdown">
+            <button onClick={toggleDropdown} className="dropdown-button">
+              ▼
+            </button>
+            {dropdownOpen && (
+              <div className="dropdown-menu">
+                <button onClick={handleAddToCart} className="dropdown-item">
+                  Add to Cart
+                </button>
+                <button onClick={handleLogout} className="dropdown-item">
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -138,10 +146,19 @@ const Navbar: React.FC = () => {
           border-radius: 8px;
           font-size: 14px;
         }
-        .profile-icon img {
+        .icons-container {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .icon-button img {
           width: 32px;
           height: 32px;
           border-radius: 50%;
+          border: 1px solid #ccc;
+          padding: 4px;
+          background: white;
+          cursor: pointer;
         }
         .dropdown {
           position: relative;

@@ -56,7 +56,7 @@ export default function ProfileViewPage() {
         </Link>
 
         {/* Edit Profile Button */}
-        <Link href="/components/profile/editprofile">
+        <Link href="/pages/profile/editprofile">
           <button className="absolute top-6 right-6 px-4 py-2 bg-gradient-to-r from-green-400 to-blue-500 text-white rounded-lg hover:brightness-110 hover:scale-105 transition duration-200">
             Edit Profile
           </button>
@@ -114,7 +114,7 @@ export default function ProfileViewPage() {
         {userType === 'business' && (
           <div className="mt-8 flex justify-center">
             <Link
-              href="/components/addproduct"
+              href="/pages/addproduct"
               className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg transition duration-200"
             >
               + Add Product
