@@ -31,6 +31,13 @@ export const fetchProducts = createAsyncThunk<Product[]>(
   }
 );
 
+export const fetchProductsByUserId = createAsyncThunk<Product[], string>(
+  'products/fetchProductsByUserId',
+  async (userId) => {
+    const response = await axiosInstance.get<Product[]>(`/api/products/getp?userId=${userId}`);
+    return response.data;
+  }
+);
 
 
 

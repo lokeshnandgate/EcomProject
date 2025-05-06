@@ -1,5 +1,8 @@
+// src/app/redux/login/slice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { loginUser, loginBusiness } from './action';
+
+// --- User Slice ---
 
 interface UserState {
   userInfo: any;
@@ -8,8 +11,14 @@ interface UserState {
   error: string | null;
 }
 
+// Check sessionStorage for user info
+const userFromSession =
+  typeof window !== 'undefined'
+    ? JSON.parse(sessionStorage.getItem('userInfo') || 'null')
+    : null;
+
 const initialUserState: UserState = {
-  userInfo: null,
+  userInfo: userFromSession,
   role: '',
   loading: false,
   error: null,
@@ -33,6 +42,7 @@ export const userSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.userInfo = action.payload;
+        sessionStorage.setItem('userInfo', JSON.stringify(action.payload));  // Save user info to sessionStorage
       })
       .addCase(loginUser.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;
@@ -41,14 +51,22 @@ export const userSlice = createSlice({
   },
 });
 
+// --- Business Slice ---
+
 interface BusinessState {
   businessInfo: any;
   loading: boolean;
   error: string | null;
 }
 
+// Check sessionStorage for business info
+const businessFromSession =
+  typeof window !== 'undefined'
+    ? JSON.parse(sessionStorage.getItem('businessInfo') || 'null')
+    : null;
+
 const initialBusinessState: BusinessState = {
-  businessInfo: null,
+  businessInfo: businessFromSession,
   loading: false,
   error: null,
 };
@@ -71,6 +89,7 @@ export const businessSlice = createSlice({
       .addCase(loginBusiness.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.businessInfo = action.payload;
+        sessionStorage.setItem('businessInfo', JSON.stringify(action.payload));  // Save business info to sessionStorage
       })
       .addCase(loginBusiness.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;
@@ -79,6 +98,7 @@ export const businessSlice = createSlice({
   },
 });
 
+// Export actions and reducers for both user and business slices
 export const { logout } = userSlice.actions;
 export const { logoutBusiness } = businessSlice.actions;
 

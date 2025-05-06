@@ -9,6 +9,7 @@ import {
   updateBusinessProfile,
 } from '../../../redux/profile/action';
 import Image from 'next/image';
+import { FaUserEdit, FaEnvelope, FaPhoneAlt, FaMapMarkerAlt, FaStore, FaAddressCard, FaInfoCircle, FaUpload } from 'react-icons/fa';
 
 export default function EditProfilePage() {
   const dispatch = useAppDispatch();
@@ -100,107 +101,132 @@ export default function EditProfilePage() {
     window.location.href = '/pages/profile';
   };
 
-  if (loading) return <p className="text-center mt-10 text-blue-300 animate-pulse">Loading your profile...</p>;
-  if (error) return <p className="text-center mt-10 text-red-400">Error: {error}</p>;
+  if (loading) return <p className="text-center mt-10 text-blue-500 animate-pulse">Loading your profile...</p>;
+  if (error) return <p className="text-center mt-10 text-red-500">Error: {error}</p>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#e0c3fc] via-[#8ec5fc] to-[#a1c4fd] flex justify-center items-center p-6">
-      <div className="w-full max-w-3xl bg-white/30 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-white/40 text-gray-900">
-        <h1 className="text-3xl font-bold text-center mb-8">Edit Your Profile</h1>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-blue-200 to-pink-200 flex justify-center items-center p-6">
+      <div className="w-full max-w-3xl bg-white/30 backdrop-blur-md p-10 rounded-3xl shadow-2xl border border-white/40 text-gray-900">
+        <h1 className="text-4xl font-bold text-center mb-8 flex items-center justify-center gap-3 text-gray-800">
+          <FaUserEdit className="text-blue-600" />
+          Edit Your Profile
+        </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex flex-col items-center">
             <Image
               src={previewImage || '/default-avatar.png'}
-              width={100}
-              height={100}
-              className="rounded-full object-cover border-4 border-white shadow-md"
+              width={120}
+              height={120}
+              className="rounded-full object-cover border-4 border-white shadow-md hover:scale-105 transition duration-300"
               alt="Profile"
             />
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="mt-3 text-sm text-gray-800"
-            />
+            <label className="mt-3 text-sm text-gray-700 flex items-center gap-2 cursor-pointer hover:text-blue-600">
+              <FaUpload />
+              <span>Upload New Photo</span>
+              <input type="file" accept="image/*" onChange={handleImageChange} hidden />
+            </label>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
-              type="text"
-              name="username"
-              placeholder="Username"
-              value={formData.username || ''}
-              onChange={handleInputChange}
-            />
-            <input
-              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={formData.email || ''}
-              onChange={handleInputChange}
-            />
-            <input
-              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
-              type="text"
-              name="contactNumber"
-              placeholder="Contact Number"
-              value={formData.contactNumber || ''}
-              onChange={handleInputChange}
-            />
-            <input
-              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
-              type="text"
-              name="locationUrl"
-              placeholder="Location URL"
-              value={formData.locationUrl || ''}
-              onChange={handleInputChange}
-            />
+            <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400">
+              <FaUserEdit className="text-gray-500 mr-2" />
+              <input
+                type="text"
+                name="username"
+                placeholder="Username"
+                value={formData.username || ''}
+                onChange={handleInputChange}
+                className="w-full bg-transparent outline-none py-2"
+              />
+            </div>
+            <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400">
+              <FaEnvelope className="text-gray-500 mr-2" />
+              <input
+                type="email"
+                name="email"
+                placeholder="Email"
+                value={formData.email || ''}
+                onChange={handleInputChange}
+                className="w-full bg-transparent outline-none py-2"
+              />
+            </div>
+            <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400">
+              <FaPhoneAlt className="text-gray-500 mr-2" />
+              <input
+                type="text"
+                name="contactNumber"
+                placeholder="Contact Number"
+                value={formData.contactNumber || ''}
+                onChange={handleInputChange}
+                className="w-full bg-transparent outline-none py-2"
+              />
+            </div>
+            <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400">
+              <FaMapMarkerAlt className="text-gray-500 mr-2" />
+              <input
+                type="text"
+                name="locationUrl"
+                placeholder="Location URL"
+                value={formData.locationUrl || ''}
+                onChange={handleInputChange}
+                className="w-full bg-transparent outline-none py-2"
+              />
+            </div>
 
             {userType === 'business' && (
-              <select
-                name="businessType"
-                value={formData.businessType || ''}
-                onChange={handleInputChange}
-                className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option value="">Select Business Type</option>
-                <option value="onlineProductMarketplace">🛍 Online Product Marketplace</option>
-                <option value="foodDelivery">🍽 Food Delivery & Table Booking</option>
-                <option value="hotelBooking">🏨 Hotel & Room Booking</option>
-                <option value="salonSpaBooking">💇‍♀️ Salon & Spa Booking</option>
-                <option value="groceryDelivery">🛒 Grocery & Essentials Delivery</option>
-                <option value="eventTicketBooking">🎫 Event Ticket Booking</option>
-                <option value="rentalMarketplace">🚗 Rental Marketplace</option>
-                <option value="digitalProductsStore">💾 Digital Products Store</option>
-                <option value="hyperlocalFarmDelivery">🌿 Hyperlocal Farm/Food Delivery</option>
-              </select>
+              <div className="col-span-1 md:col-span-2">
+                <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400">
+                  <FaStore className="text-gray-500 mr-2" />
+                  <select
+                    name="businessType"
+                    value={formData.businessType || ''}
+                    onChange={handleInputChange}
+                    className="w-full bg-transparent outline-none py-2"
+                  >
+                    <option value="">Select Business Type</option>
+                    <option value="onlineProductMarketplace">🛍 Online Product Marketplace</option>
+                    <option value="foodDelivery">🍽 Food Delivery & Table Booking</option>
+                    <option value="hotelBooking">🏨 Hotel & Room Booking</option>
+                    <option value="salonSpaBooking">💇‍♀️ Salon & Spa Booking</option>
+                    <option value="groceryDelivery">🛒 Grocery & Essentials Delivery</option>
+                    <option value="eventTicketBooking">🎫 Event Ticket Booking</option>
+                    <option value="rentalMarketplace">🚗 Rental Marketplace</option>
+                    <option value="digitalProductsStore">💾 Digital Products Store</option>
+                    <option value="hyperlocalFarmDelivery">🌿 Hyperlocal Farm/Food Delivery</option>
+                  </select>
+                </div>
+              </div>
             )}
 
-            <input
-              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400"
-              type="text"
-              name="address"
-              placeholder="Address"
-              value={formData.address || ''}
-              onChange={handleInputChange}
-            />
-            <textarea
-              className="bg-white/60 text-gray-800 border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-400 col-span-2"
-              name="about"
-              placeholder="About"
-              rows={3}
-              value={formData.about || ''}
-              onChange={handleInputChange}
-            />
+            <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400 col-span-1 md:col-span-2">
+              <FaAddressCard className="text-gray-500 mr-2" />
+              <input
+                type="text"
+                name="address"
+                placeholder="Address"
+                value={formData.address || ''}
+                onChange={handleInputChange}
+                className="w-full bg-transparent outline-none py-2"
+              />
+            </div>
+            <div className="flex items-start bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400 col-span-1 md:col-span-2">
+              <FaInfoCircle className="text-gray-500 mt-3 mr-2" />
+              <textarea
+                name="about"
+                placeholder="About"
+                rows={3}
+                value={formData.about || ''}
+                onChange={handleInputChange}
+                className="w-full bg-transparent outline-none py-2"
+              />
+            </div>
           </div>
 
           <div className="text-center">
             <button
               type="submit"
-              className="bg-gradient-to-r from-green-400 to-blue-500 text-white px-6 py-2 rounded-lg shadow-lg hover:brightness-110 hover:scale-105 transition duration-200"
+              className="bg-gradient-to-r from-green-400 to-blue-500 text-white px-8 py-3 rounded-full shadow-lg hover:brightness-110 hover:scale-105 transition duration-300 font-semibold text-lg"
             >
               Save Profile
             </button>

@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { fetchProducts, addProduct, updateProductById, deleteProductById } from './action';
+import { fetchProducts, fetchProductsByUserId, addProduct, updateProductById, deleteProductById } from './action';
 
 interface Product {
   _id: string;
@@ -47,7 +47,7 @@ const productSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch Products
+      // Fetch all products for dashboard
       .addCase(fetchProducts.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -59,6 +59,20 @@ const productSlice = createSlice({
       .addCase(fetchProducts.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch products';
+      })
+      
+      // Fetch products by userId for profile
+      .addCase(fetchProductsByUserId.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchProductsByUserId.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list = action.payload;
+      })
+      .addCase(fetchProductsByUserId.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch products by userId';
       })
       
       // Add Product
