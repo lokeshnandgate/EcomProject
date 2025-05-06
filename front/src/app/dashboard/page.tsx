@@ -92,7 +92,7 @@ export default function DashboardPage() {
       ...formData,
       price: parseFloat(formData.price),
       inStock: Boolean(formData.inStock),
-      _id: editingProduct._id,
+      productId: editingProduct._id,
     };
 
     await dispatch(updateProductById(updatedProduct));
