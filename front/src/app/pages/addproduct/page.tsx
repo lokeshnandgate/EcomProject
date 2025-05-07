@@ -1,9 +1,15 @@
-
 'use client';
 
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { addProduct } from '@/app/redux/products/action';
+import { 
+  FiPlusCircle, FiDollarSign, FiType, FiFileText, 
+  FiImage, FiCheck, FiShoppingBag, FiCoffee, 
+  FiHome, FiScissors, FiShoppingCart, 
+  FiTruck, FiHardDrive, FiPackage 
+} from 'react-icons/fi';
+import { FaStore } from 'react-icons/fa';
 
 export default function AddProductPage() {
     const dispatch = useDispatch();
@@ -30,123 +36,181 @@ export default function AddProductPage() {
     };
 
     return (
-        <div className="p-10 min-h-screen bg-gradient-to-br from-yellow-100 via-white to-yellow-50">
+        <div className="p-6 min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
             <div className="max-w-4xl mx-auto">
-                <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight mb-10">Add New Product</h1>
+                <div className="flex items-center mb-8">
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 rounded-full shadow-lg mr-4">
+                        <FiPlusCircle className="text-white text-2xl" />
+                    </div>
+                    <h1 className="text-4xl font-extrabold text-gray-800 tracking-tight">
+                        Add New Product
+                    </h1>
+                </div>
                 
-                <div className="bg-white rounded-2xl shadow-2xl p-8 space-y-6 relative border border-gray-200">
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Title*</label>
+                <div className="bg-white rounded-3xl shadow-lg p-8 space-y-8 border border-gray-100">
+                    <div className="space-y-6">
+                        {/* Title Field */}
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-blue-600">
+                                <FiType className="text-xl" />
+                            </div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Title*</label>
                             <input
                                 name="title"
                                 value={formData.title}
                                 onChange={handleFormChange}
-                                placeholder="Title"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Product Title"
+                                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                                 required
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        {/* Description Field */}
+                        <div className="relative">
+                            <div className="absolute top-8 left-3 text-blue-600">
+                                <FiFileText className="text-xl" />
+                            </div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Description</label>
                             <textarea
                                 name="description"
                                 value={formData.description}
                                 onChange={handleFormChange}
-                                placeholder="Description"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                rows={3}
+                                placeholder="Product description..."
+                                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                rows={4}
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Price*</label>
+                        {/* Price Field */}
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-green-600">
+                                <FiDollarSign className="text-xl" />
+                            </div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Price*</label>
                             <input
                                 name="price"
                                 type="number"
                                 value={formData.price}
                                 onChange={handleFormChange}
-                                placeholder="Price"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="0.00"
+                                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
                                 step="0.01"
                                 required
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Business Type</label>
+                        {/* Category Field */}
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-600">
+                                <FaStore className="text-xl" />
+                            </div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Business Type</label>
                             <select
                                 name="category"
                                 value={formData.category}
                                 onChange={handleFormChange}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full pl-12 pr-10 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white appearance-none"
                             >
-                                <option value="">All Business Types</option>
-                                <option value="onlineProductMarketplace">🛍 Online Product Marketplace</option>
-                                <option value="foodDelivery">🍽 Food Delivery & Table Booking</option>
-                                <option value="hotelBooking">🏨 Hotel & Room Booking</option>
-                                <option value="salonSpaBooking">💇‍♀️ Salon & Spa Booking</option>
-                                <option value="groceryDelivery">🛒 Grocery & Essentials Delivery</option>
-                                <option value="eventTicketBooking">🎫 Event Ticket Booking</option>
-                                <option value="rentalMarketplace">🚗 Rental Marketplace</option>
-                                <option value="digitalProductsStore">💾 Digital Products Store</option>
-                                <option value="hyperlocalFarmDelivery">🌿 Hyperlocal Farm/Food Delivery</option>
+                                <option value="">Select Business Type</option>
+                                <option value="onlineProductMarketplace">Online Product Marketplace</option>
+                                <option value="foodDelivery">Food Delivery & Table Booking</option>
+                                <option value="hotelBooking">Hotel & Room Booking</option>
+                                <option value="salonSpaBooking">Salon & Spa Booking</option>
+                                <option value="groceryDelivery">Grocery & Essentials Delivery</option>
+                                <option value="eventTicketBooking">Event Ticket Booking</option>
+                                <option value="rentalMarketplace">Rental Marketplace</option>
+                                <option value="digitalProductsStore">Digital Products Store</option>
+                                <option value="hyperlocalFarmDelivery">Hyperlocal Farm/Food Delivery</option>
                             </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Upload Image</label>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                        const reader = new FileReader();
-                                        reader.onloadend = () => {
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                image: reader.result as string,
-                                            }));
-                                        };
-                                        reader.readAsDataURL(file);
-                                    }
-                                }}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                            />
-                            {formData.image && (
-                                <img
-                                    src={formData.image}
-                                    alt="Preview"
-                                    className="mt-4 w-full h-48 object-cover rounded-xl shadow-md"
+                        {/* Image Upload */}
+                        <div className="relative">
+                            <div className="absolute top-8 left-3 text-blue-600">
+                                <FiImage className="text-xl" />
+                            </div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Product Image</label>
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    image: reader.result as string,
+                                                }));
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }
+                                    }}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 />
+                                <div className="text-center">
+                                    <FiImage className="mx-auto text-3xl text-gray-400 mb-2" />
+                                    <p className="text-sm text-gray-600">
+                                        {formData.image ? 'Change image' : 'Click to upload product image'}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 5MB</p>
+                                </div>
+                            </div>
+                            {formData.image && (
+                                <div className="mt-4 relative group">
+                                    <img
+                                        src={formData.image}
+                                        alt="Preview"
+                                        className="w-full h-48 object-cover rounded-lg shadow-sm border-2 border-gray-200"
+                                    />
+                                    <button
+                                        onClick={() => setFormData(prev => ({...prev, image: ''}))}
+                                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             )}
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <input
-                                id="inStock"
-                                name="inStock"
-                                type="checkbox"
-                                checked={formData.inStock}
-                                onChange={handleFormChange}
-                                className="h-4 w-4 border-gray-300 text-blue-600 rounded focus:ring-blue-500"
-                            />
-                            <label htmlFor="inStock" className="text-sm text-gray-700">
-                                In Stock
+                        {/* In Stock Checkbox */}
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="relative flex items-center">
+                                <input
+                                    id="inStock"
+                                    name="inStock"
+                                    type="checkbox"
+                                    checked={formData.inStock}
+                                    onChange={handleFormChange}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                            </div>
+                            <label htmlFor="inStock" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <FiCheck className="text-green-600" />
+                                <span>Currently in stock</span>
                             </label>
                         </div>
                     </div>
 
+                    {/* Submit Button */}
                     <button
                         onClick={async () => {
                             await handleSubmit();
                             alert('Product added successfully!');
                             window.location.href = '/dashboard';
                         }}
-                        className="w-full bg-gradient-to-r from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white font-semibold px-4 py-3 rounded-lg transition"
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
                     >
+                        <FiPlusCircle className="text-xl" />
                         Add Product
                     </button>
                 </div>

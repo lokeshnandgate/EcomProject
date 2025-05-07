@@ -10,7 +10,7 @@ export const store = configureStore({
     products: productReducer,
     user: userReducer,
     business: businessReducer,
-    businessRegister: businessRegisterReducer,  // Use the correct name here
+    businessRegister: businessRegisterReducer,  
     profile: profileReducer,
     chat: chatReducer,
   },

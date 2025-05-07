@@ -1,10 +1,17 @@
-// redux/chat/slice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { sendMessage } from './action';
+import { sendMessage, fetchMessages } from './action';
+
+interface Sender {
+  _id: string;
+  name: string;
+  email?: string;
+}
 
 interface Message {
+  _id: string;
   text: string;
-  sender?: string; // Extend as needed
+  createdAt: string;
+  sender: Sender;
 }
 
 interface ChatState {
@@ -38,6 +45,18 @@ const chatSlice = createSlice({
         state.messages.push(action.payload);
       })
       .addCase(sendMessage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(fetchMessages.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchMessages.fulfilled, (state, action: PayloadAction<Message[]>) => {
+        state.loading = false;
+        state.messages = action.payload;
+      })
+      .addCase(fetchMessages.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

@@ -55,7 +55,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      <footer className="bg-white border-t p-4 sticky bottom-0 flex items-center gap-2 shadow-inner relative">
+      <footer className="bg-white border-t p-4 sticky bottom-0 flex items-center gap-2 shadow-inner">
         <button
           onClick={() => setShowEmoji(!showEmoji)}
           className="text-xl px-3 py-1 rounded-full hover:bg-gray-200 transition"

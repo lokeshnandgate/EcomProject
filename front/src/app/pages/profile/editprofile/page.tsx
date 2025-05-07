@@ -9,7 +9,17 @@ import {
   updateBusinessProfile,
 } from '../../../redux/profile/action';
 import Image from 'next/image';
-import { FaUserEdit, FaEnvelope, FaPhoneAlt, FaMapMarkerAlt, FaStore, FaAddressCard, FaInfoCircle, FaUpload } from 'react-icons/fa';
+import { 
+  FiUser, FiMail, FiPhone, FiMapPin, FiHome, FiInfo, 
+  FiCamera, FiSave, FiEdit2, FiGlobe, FiBriefcase 
+} from 'react-icons/fi';
+import { 
+  FaStore, FaHotel, FaUtensils, FaTicketAlt, FaCar, 
+  FaShoppingBag, FaUserTie, FaUserCircle 
+} from 'react-icons/fa';
+import { GiFarmer, GiSellCard } from 'react-icons/gi';
+import { MdComputer, MdOutlineSpa, MdBusiness } from 'react-icons/md';
+import { BsBuilding, BsShopWindow } from 'react-icons/bs';
 
 export default function EditProfilePage() {
   const dispatch = useAppDispatch();
@@ -101,133 +111,216 @@ export default function EditProfilePage() {
     window.location.href = '/pages/profile';
   };
 
-  if (loading) return <p className="text-center mt-10 text-blue-500 animate-pulse">Loading your profile...</p>;
-  if (error) return <p className="text-center mt-10 text-red-500">Error: {error}</p>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-100 to-indigo-200">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p className="mt-4 text-lg font-medium text-purple-700 flex items-center justify-center">
+          <svg className="animate-pulse w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+          </svg>
+          Loading your profile...
+        </p>
+      </div>
+    </div>
+  );
+  
+  if (error) return (
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-100 to-indigo-200">
+      <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md text-center border-2 border-red-200">
+        <div className="text-red-500 text-5xl mb-4">⚠️</div>
+        <h2 className="text-2xl font-bold text-red-600 mb-2 flex items-center justify-center">
+          <FiInfo className="mr-2" /> Error Loading Profile
+        </h2>
+        <p className="text-gray-700 mb-6">{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center mx-auto"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Try Again
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-blue-200 to-pink-200 flex justify-center items-center p-6">
-      <div className="w-full max-w-3xl bg-white/30 backdrop-blur-md p-10 rounded-3xl shadow-2xl border border-white/40 text-gray-900">
-        <h1 className="text-4xl font-bold text-center mb-8 flex items-center justify-center gap-3 text-gray-800">
-          <FaUserEdit className="text-blue-600" />
-          Edit Your Profile
-        </h1>
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200 flex justify-center items-center p-4 md:p-6">
+      <div className="w-full max-w-4xl bg-white/95 backdrop-blur-lg p-6 md:p-10 rounded-2xl shadow-2xl border-2 border-white/80">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-3 rounded-full mb-4">
+            {userType === 'business' ? (
+              <MdBusiness className="text-3xl" />
+            ) : (
+              <FaUserCircle className="text-3xl" />
+            )}
+          </div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            {userType === 'business' ? 'Edit Profile' : 'Edit Your Profile'}
+          </h1>
+          <p className="text-gray-600 flex items-center justify-center">
+            <FiEdit2 className="mr-2" />
+            Update your information to keep your profile fresh and engaging
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Profile Picture Section */}
           <div className="flex flex-col items-center">
-            <Image
-              src={previewImage || '/default-avatar.png'}
-              width={120}
-              height={120}
-              className="rounded-full object-cover border-4 border-white shadow-md hover:scale-105 transition duration-300"
-              alt="Profile"
-            />
-            <label className="mt-3 text-sm text-gray-700 flex items-center gap-2 cursor-pointer hover:text-blue-600">
-              <FaUpload />
-              <span>Upload New Photo</span>
-              <input type="file" accept="image/*" onChange={handleImageChange} hidden />
-            </label>
+            <div className="relative group">
+              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-xl relative ring-4 ring-purple-200/50">
+                <Image
+                  src={previewImage || '/default-avatar.png'}
+                  fill
+                  className="object-cover"
+                  alt="Profile"
+                />
+              </div>
+              <label className="absolute -bottom-2 -right-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-3 rounded-full cursor-pointer shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 group-hover:opacity-100">
+                <FiCamera className="text-xl" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+              </label>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400">
-              <FaUserEdit className="text-gray-500 mr-2" />
+          {/* Form Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Username */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-500">
+                <FiUser className="text-lg" />
+              </div>
               <input
+                className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all shadow-sm hover:shadow-md"
                 type="text"
                 name="username"
                 placeholder="Username"
                 value={formData.username || ''}
                 onChange={handleInputChange}
-                className="w-full bg-transparent outline-none py-2"
               />
             </div>
-            <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400">
-              <FaEnvelope className="text-gray-500 mr-2" />
+
+            {/* Email */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-blue-500">
+                <FiMail className="text-lg" />
+              </div>
               <input
+                className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm hover:shadow-md"
                 type="email"
                 name="email"
                 placeholder="Email"
                 value={formData.email || ''}
                 onChange={handleInputChange}
-                className="w-full bg-transparent outline-none py-2"
               />
             </div>
-            <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400">
-              <FaPhoneAlt className="text-gray-500 mr-2" />
+
+            {/* Contact Number */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-green-500">
+                <FiPhone className="text-lg" />
+              </div>
               <input
+                className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all shadow-sm hover:shadow-md"
                 type="text"
                 name="contactNumber"
                 placeholder="Contact Number"
                 value={formData.contactNumber || ''}
                 onChange={handleInputChange}
-                className="w-full bg-transparent outline-none py-2"
               />
             </div>
-            <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400">
-              <FaMapMarkerAlt className="text-gray-500 mr-2" />
+
+            {/* Location URL */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-red-500">
+                <FiMapPin className="text-lg" />
+              </div>
               <input
+                className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all shadow-sm hover:shadow-md"
                 type="text"
                 name="locationUrl"
                 placeholder="Location URL"
                 value={formData.locationUrl || ''}
                 onChange={handleInputChange}
-                className="w-full bg-transparent outline-none py-2"
               />
             </div>
 
+            {/* Business Type Dropdown */}
             {userType === 'business' && (
-              <div className="col-span-1 md:col-span-2">
-                <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400">
-                  <FaStore className="text-gray-500 mr-2" />
-                  <select
-                    name="businessType"
-                    value={formData.businessType || ''}
-                    onChange={handleInputChange}
-                    className="w-full bg-transparent outline-none py-2"
-                  >
-                    <option value="">Select Business Type</option>
-                    <option value="onlineProductMarketplace">🛍 Online Product Marketplace</option>
-                    <option value="foodDelivery">🍽 Food Delivery & Table Booking</option>
-                    <option value="hotelBooking">🏨 Hotel & Room Booking</option>
-                    <option value="salonSpaBooking">💇‍♀️ Salon & Spa Booking</option>
-                    <option value="groceryDelivery">🛒 Grocery & Essentials Delivery</option>
-                    <option value="eventTicketBooking">🎫 Event Ticket Booking</option>
-                    <option value="rentalMarketplace">🚗 Rental Marketplace</option>
-                    <option value="digitalProductsStore">💾 Digital Products Store</option>
-                    <option value="hyperlocalFarmDelivery">🌿 Hyperlocal Farm/Food Delivery</option>
-                  </select>
+              <div className="relative col-span-2">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-500">
+                  <FaStore className="text-lg" />
+                </div>
+                <select
+                  name="businessType"
+                  value={formData.businessType || ''}
+                  onChange={handleInputChange}
+                  className="w-full pl-12 pr-10 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none appearance-none transition-all shadow-sm hover:shadow-md"
+                >
+                  <option value="">Select Business Type</option>
+                  <option value="onlineProductMarketplace">Online Product Marketplace</option>
+                  <option value="foodDelivery">Food Delivery & Table Booking</option>
+                  <option value="hotelBooking">Hotel & Room Booking</option>
+                  <option value="salonSpaBooking">Salon & Spa Booking</option>
+                  <option value="groceryDelivery">Grocery & Essentials Delivery</option>
+                  <option value="eventTicketBooking">Event Ticket Booking</option>
+                  <option value="rentalMarketplace">Rental Marketplace</option>
+                  <option value="digitalProductsStore">Digital Products Store</option>
+                  <option value="hyperlocalFarmDelivery">Hyperlocal Farm/Food Delivery</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
                 </div>
               </div>
             )}
 
-            <div className="flex items-center bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400 col-span-1 md:col-span-2">
-              <FaAddressCard className="text-gray-500 mr-2" />
+            {/* Address */}
+            <div className="relative col-span-2">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-amber-500">
+                <FiHome className="text-lg" />
+              </div>
               <input
+                className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all shadow-sm hover:shadow-md"
                 type="text"
                 name="address"
                 placeholder="Address"
                 value={formData.address || ''}
                 onChange={handleInputChange}
-                className="w-full bg-transparent outline-none py-2"
               />
             </div>
-            <div className="flex items-start bg-white/60 rounded-md px-3 border focus-within:ring-2 focus-within:ring-blue-400 col-span-1 md:col-span-2">
-              <FaInfoCircle className="text-gray-500 mt-3 mr-2" />
+
+            {/* About */}
+            <div className="relative col-span-2">
+              <div className="absolute top-3 left-3 text-teal-500">
+                <FiInfo className="text-lg" />
+              </div>
               <textarea
+                className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all shadow-sm hover:shadow-md min-h-[120px]"
                 name="about"
-                placeholder="About"
+                placeholder="Tell us about yourself..."
                 rows={3}
                 value={formData.about || ''}
                 onChange={handleInputChange}
-                className="w-full bg-transparent outline-none py-2"
               />
             </div>
           </div>
 
-          <div className="text-center">
+          {/* Submit Button */}
+          <div className="text-center pt-4">
             <button
               type="submit"
-              className="bg-gradient-to-r from-green-400 to-blue-500 text-white px-8 py-3 rounded-full shadow-lg hover:brightness-110 hover:scale-105 transition duration-300 font-semibold text-lg"
+              className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-medium rounded-xl shadow-lg hover:shadow-xl hover:from-purple-600 hover:to-indigo-700 transition-all duration-300 transform hover:-translate-y-1"
             >
+              <FiSave className="mr-2 text-xl" />
               Save Profile
             </button>
           </div>
