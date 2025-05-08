@@ -38,14 +38,11 @@ const sendMessage = async (req, res) => {
 
 // Fetch chat history
 const getChatHistory = async (req, res) => {
-  const { userId, otherId } = req.body;
+  const { userId } = req.body;
 
   try {
     const chats = await Chat.find({
-      $or: [
-        { senderId: userId, receiverId: otherId },
-        { senderId: otherId, receiverId: userId },
-      ],
+      receiverId: userId,
     }).sort({ timestamp: 1 });
 
     res.status(200).json({ messages: chats });
@@ -55,7 +52,22 @@ const getChatHistory = async (req, res) => {
   }
 };
 
+// Fetch user list
+const getUserList = async (req, res) => {
+  try {
+    const users = await User.find({}, { username: 1, _id: 0 });
+    const businessUsers = await businessUser.find({}, { username: 1, _id: 0 });
+
+    res.status(200).json({ users, businessUsers });
+  } catch (error) {
+    console.error('Error fetching user list:', error);
+    res.status(500).json({ message: 'Failed to get user list' });
+  }
+};
+
 module.exports = {
   sendMessage,
   getChatHistory,
+  getUserList,
 };
+

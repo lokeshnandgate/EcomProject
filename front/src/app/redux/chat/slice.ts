@@ -1,67 +1,51 @@
+// src/redux/slices/chatSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { sendMessage, fetchMessages } from './action';
-
-interface Sender {
-  _id: string;
-  name: string;
-  email?: string;
-}
-
-interface Message {
-  _id: string;
-  text: string;
-  createdAt: string;
-  sender: Sender;
-}
+import { ChatMessage } from './types';
 
 interface ChatState {
-  messages: Message[];
+  messages: ChatMessage[];
   loading: boolean;
   error: string | null;
+  currentChat: string | null; // ID of the current chat (user or business)
 }
 
 const initialState: ChatState = {
   messages: [],
   loading: false,
   error: null,
+  currentChat: null,
 };
 
 const chatSlice = createSlice({
   name: 'chat',
   initialState,
   reducers: {
-    clearMessages: (state) => {
-      state.messages = [];
+    addMessage: (state, action: PayloadAction<ChatMessage>) => {
+      state.messages.push(action.payload);
     },
-  },
-  extraReducers: (builder) => {
-    builder
-      .addCase(sendMessage.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(sendMessage.fulfilled, (state, action: PayloadAction<Message>) => {
-        state.loading = false;
-        state.messages.push(action.payload);
-      })
-      .addCase(sendMessage.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-      .addCase(fetchMessages.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchMessages.fulfilled, (state, action: PayloadAction<Message[]>) => {
-        state.loading = false;
-        state.messages = action.payload;
-      })
-      .addCase(fetchMessages.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      });
+    setMessages: (state, action: PayloadAction<ChatMessage[]>) => {
+      state.messages = action.payload;
+    },
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.loading = action.payload;
+    },
+    setError: (state, action: PayloadAction<string | null>) => {
+      state.error = action.payload;
+    },
+    setCurrentChat: (state, action: PayloadAction<string | null>) => {
+      state.currentChat = action.payload;
+    },
+    clearChat: () => initialState,
   },
 });
 
-export const { clearMessages } = chatSlice.actions;
+export const {
+  addMessage,
+  setMessages,
+  setLoading,
+  setError,
+  setCurrentChat,
+  clearChat,
+} = chatSlice.actions;
+
 export default chatSlice.reducer;
