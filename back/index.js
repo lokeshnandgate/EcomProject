@@ -13,7 +13,7 @@ const userregRoutes = require('./userreg/routes');
 const profileRoutes = require('./profile/routes');
 const authRoutes = require('./logout/routes');
 const chatRoutes = require('./chat/routes');
-const Chat = require('./chat/modal'); // ✅ import Chat model
+const Chat = require('./chat/modal'); 
 
 dotenv.config();
 
@@ -51,7 +51,7 @@ app.use('/api/businessreg', businessRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/userreg', userregRoutes);
 app.use('/api/profile', profileRoutes);
-app.use('/api', authRoutes);
+app.use('/api/logout', authRoutes);
 app.use('/api/chat', chatRoutes);
 
 // WebSocket events

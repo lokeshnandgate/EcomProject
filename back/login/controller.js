@@ -36,7 +36,7 @@ const userRegisterController = async (req, res) => {
     const token = jwt.sign(
       { id: newUser._id, username, email, userType: 'User' },
       process.env.JWT_SECRET,
-      { expiresIn: '1000h' }
+      { expiresIn: '30d' }
     );
 
     res.status(201).json({
