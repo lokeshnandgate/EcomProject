@@ -1,192 +1,239 @@
-// src/app/chat/page.tsx
-'use client';
-import React, { useState, useEffect, useRef } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../redux/store/store';
-import { sendMessage, fetchChatHistory } from '../../redux/chat/action';
-import { setCurrentChat } from '../../redux/chat/slice';
-import { User } from '../../redux/chat/types';
-import { BusinessUser , } from '../../redux/chat/types';
-import { AppDispatch } from '../../redux/store/store';
+"use client";
 
+import React, { useState, useEffect } from 'react';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { useDispatch, useSelector } from 'react-redux';
+import axios from 'axios';
+import { configureStore } from '@reduxjs/toolkit';
+import { Provider } from 'react-redux';
 
-  
-const ChatPage = () => {
+// ===========================
+// Axios Instance Setup
+// ===========================
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-  const dispatch: AppDispatch = useDispatch();
-  const { messages, loading, error, currentChat } = useSelector((state: RootState) => state.chat);
-  const user = useSelector((state: RootState) => state.auth?.user);
-  const [message, setMessage] = useState('');
-  const [receiverType, setReceiverType] = useState<'User' | 'businessUser'>('User');
-  const [contacts, setContacts] = useState<(User | BusinessUser)[]>([]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+});
 
-  console.log('Current user:', user);
-
-  // Fetch contacts (you'll need to implement this based on your API)
-  useEffect(() => {
-    const fetchContacts = async () => {
-      try {
-        // This should be replaced with your actual API call to fetch contacts
-        // const response = await axiosInstance.get('/contacts');
-        // setContacts(response.data);
-        
-        // Mock data for demonstration
-        setContacts([
-          // { _id: '1', username: 'User1', email: 'user1@example.com', userType: 'User' },
-          // { _id: '2', username: 'Business1', email: 'business1@example.com', userType: 'businessUser' },
-        ]);
-      } catch (error) {
-        console.error('Failed to fetch contacts', error);
-      }
-    };
-    
-    fetchContacts();
-  }, []);
-
-  // Load chat history when currentChat changes
-  useEffect(() => {
-    if (currentChat) {
-      const receiver = contacts.find(c => c._id === currentChat);
-      if (receiver) {
-        setReceiverType(receiver.userType === 'User' ? 'User' : 'businessUser');
-        dispatch(fetchChatHistory(currentChat));
-      }
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-  }, [currentChat, contacts, dispatch]);
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-  // Auto-scroll to bottom of messages
+// ===========================
+// Types
+// ===========================
+interface Participant {
+  id: string;
+  type: 'User' | 'businessUser';
+}
+
+interface Message {
+  _id?: string;
+  senderId: string;
+  senderType: 'User' | 'businessUser';
+  message: string;
+  timestamp: Date;
+  read: boolean;
+}
+
+interface ChatRoom {
+  _id: string;
+  participant1Id: string;
+  participant1Type: 'User' | 'businessUser';
+  participant2Id: string;
+  participant2Type: 'User' | 'businessUser';
+  messages: Message[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ===========================
+// Async Actions (Thunks)
+// ===========================
+export const createChatRoom = createAsyncThunk(
+  'chat/createChatRoom',
+  async (participant2: { participant2Id: string, participant2Type: 'User' | 'businessUser' }) => {
+    const response = await axiosInstance.post('/chat/addNewChatEntry', participant2);
+    return response.data;
+  }
+);
+
+export const addNewMessage = createAsyncThunk(
+  'chat/addNewMessage',
+  async (messageData: { roomId: string, message: string }) => {
+    const response = await axiosInstance.post('/chat/addNewMessage', messageData);
+    return response.data;
+  }
+);
+
+export const getChatRooms = createAsyncThunk(
+  'chat/getChatRooms',
+  async () => {
+    const response = await axiosInstance.post('/chat/getRooms');
+    return response.data.rooms;
+  }
+);
+
+export const findRoomOf2Users = createAsyncThunk(
+  'chat/findRoomOf2Users',
+  async (user2: { user2Id: string, user2Type: 'User' | 'businessUser' }) => {
+    const response = await axiosInstance.post('/chat/findRoomOf2Users', user2);
+    return response.data.room;
+  }
+);
+
+// ===========================
+// Slice
+// ===========================
+interface ChatState {
+  chatRooms: ChatRoom[];
+  currentChatRoom: ChatRoom | null;
+  loading: boolean;
+  error: string | null;
+}
+
+const initialState: ChatState = {
+  chatRooms: [],
+  currentChatRoom: null,
+  loading: false,
+  error: null,
+};
+
+const chatSlice = createSlice({
+  name: 'chat',
+  initialState,
+  reducers: {},
+  extraReducers: (builder) => {
+    builder
+      .addCase(createChatRoom.fulfilled, (state, action) => {
+        state.chatRooms.push(action.payload);
+      })
+      .addCase(getChatRooms.fulfilled, (state, action) => {
+        state.chatRooms = action.payload;
+      })
+      .addCase(findRoomOf2Users.fulfilled, (state, action) => {
+        state.currentChatRoom = action.payload;
+      })
+      .addCase(addNewMessage.fulfilled, (state, action) => {
+        if (state.currentChatRoom && state.currentChatRoom._id === action.payload.roomId) {
+          state.currentChatRoom.messages.push(action.payload);
+        }
+      });
+  },
+});
+
+const store = configureStore({
+  reducer: {
+    chat: chatSlice.reducer,
+  },
+});
+
+type RootState = ReturnType<typeof store.getState>;
+const useAppDispatch: () => typeof store.dispatch = useDispatch;
+
+// ===========================
+// Component
+// ===========================
+const ChatPage = () => {
+  const dispatch = useAppDispatch();
+  const { chatRooms, currentChatRoom } = useSelector((state: RootState) => state.chat);
+
+  const [message, setMessage] = useState<string>('');
+  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    dispatch(getChatRooms());
+  }, [dispatch]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim() || !currentChat) return;
-    
-    dispatch(sendMessage(currentChat, receiverType, message));
-    setMessage('');
+  const handleCreateChatRoom = async () => {
+    const participant2Id = prompt("Enter the User ID to chat with:");
+    if (participant2Id) {
+      await dispatch(createChatRoom({ participant2Id, participant2Type: 'User' }));
+    }
   };
 
-  const formatDate = (dateString: string | Date) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const handleSendMessage = async () => {
+    if (message.trim() && selectedRoom) {
+      await dispatch(addNewMessage({ roomId: selectedRoom._id, message }));
+      setMessage('');
+    }
+  };
+
+  const handleRoomClick = (room: ChatRoom) => {
+    setSelectedRoom(room);
+    dispatch(findRoomOf2Users({ user2Id: room.participant2Id, user2Type: room.participant2Type }));
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Contacts sidebar */}
-      <div className="w-1/4 bg-white border-r border-gray-200">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">Contacts</h2>
-        </div>
-        <div className="overflow-y-auto">
-          {contacts.map(contact => (
-            <div
-              key={contact._id}
-              className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${
-                currentChat === contact._id ? 'bg-blue-50' : ''
-              }`}
-              onClick={() => dispatch(setCurrentChat(contact._id))}
+    <Provider store={store}>
+      <div className="flex h-screen">
+        <div className="w-1/4 bg-gray-100 p-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">Chat Rooms</h2>
+            <button
+              onClick={handleCreateChatRoom}
+              className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
             >
-              <div className="flex items-center">
-                <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center mr-3">
-                  {contact.username.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <p className="font-medium">{contact.username}</p>
-                  <p className="text-sm text-gray-500">{contact.userType}</p>
-                </div>
+              New Chat
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {chatRooms.map((room) => (
+              <div
+                key={room._id}
+                className={`p-3 rounded cursor-pointer ${
+                  selectedRoom?._id === room._id ? 'bg-blue-500 text-white' : 'bg-white'
+                }`}
+                onClick={() => handleRoomClick(room)}
+              >
+                <p className="font-medium">{room.participant2Id}</p>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Chat area */}
-      <div className="flex-1 flex flex-col">
-        {currentChat ? (
-          <>
-            {/* Chat header */}
-            <div className="p-4 border-b border-gray-200 bg-white">
-              <h2 className="text-xl font-semibold">
-                {contacts.find(c => c._id === currentChat)?.username || 'Chat'}
-              </h2>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-              {loading && messages.length === 0 ? (
-                <div className="flex justify-center items-center h-full">
-                  <p>Loading messages...</p>
-                </div>
-              ) : error ? (
-                <div className="text-red-500 text-center p-4">{error}</div>
-              ) : messages.length === 0 ? (
-                <div className="flex justify-center items-center h-full">
-                  <p>No messages yet. Start the conversation!</p>
-                </div>
-              ) : (
-                messages.map((msg, index) => (
-                  <div
-                    key={index}
-                    className={`mb-4 flex ${
-                      msg.senderId === user?._id ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
-                    <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        msg.senderId === user?._id
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-white border border-gray-200'
-                      }`}
-                    >
-                      <p>{msg.message}</p>
-                      <p
-                        className={`text-xs mt-1 ${
-                          msg.senderId === user?._id ? 'text-blue-100' : 'text-gray-500'
-                        }`}
-                      >
-                        {formatDate(msg.timestamp)}
-                      </p>
-                    </div>
+        <div className="w-3/4 flex flex-col p-4 bg-white">
+          {selectedRoom ? (
+            <>
+              <h3 className="text-xl font-semibold mb-4">
+                Chat with {selectedRoom.participant2Id}
+              </h3>
+              <div className="flex-grow overflow-y-auto mb-4 space-y-2">
+                {selectedRoom.messages.map((msg) => (
+                  <div key={msg._id} className="p-3 bg-gray-200 rounded-lg">
+                    <p>{msg.message}</p>
                   </div>
-                ))
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+                ))}
+              </div>
 
-            {/* Message input */}
-            <div className="p-4 border-t border-gray-200 bg-white">
-              <form onSubmit={handleSendMessage} className="flex">
+              <div className="flex items-center space-x-2">
                 <input
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 border border-gray-300 rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={loading}
+                  placeholder="Type a message"
+                  className="w-full p-2 border border-gray-300 rounded-lg"
                 />
-                <button
-                  type="submit"
-                  className="bg-blue-500 text-white px-4 py-2 rounded-r-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                  disabled={!message.trim() || loading}
-                >
+                <button onClick={handleSendMessage} className="px-4 py-2 bg-blue-500 text-white rounded-lg">
                   Send
                 </button>
-              </form>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex justify-center items-center bg-gray-50">
-            <div className="text-center">
-              <h3 className="text-xl font-medium text-gray-700">Select a chat to start messaging</h3>
-              <p className="text-gray-500 mt-2">Choose from your contacts to begin conversation</p>
-            </div>
-          </div>
-        )}
+              </div>
+            </>
+          ) : (
+            <p>Select a chat room to start messaging.</p>
+          )}
+        </div>
       </div>
-    </div>
+    </Provider>
   );
 };
 

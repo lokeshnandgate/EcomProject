@@ -14,7 +14,7 @@ const profileRoutes = require('./profile/routes');
 const authRoutes = require('./logout/routes');
 const chatRoutes = require('./chat/routes');
 const Chat = require('./chat/modal'); 
-
+const searchUsers= require('./search/routes');
 dotenv.config();
 
 const app = express();
@@ -53,7 +53,7 @@ app.use('/api/userreg', userregRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/logout', authRoutes);
 app.use('/api/chat', chatRoutes);
-
+app.use('/api/search', searchUsers);
 // WebSocket events
 let users = {}; // Store active users and their socket IDs
 

@@ -3,7 +3,7 @@ import productReducer from '../products/slice';
 import { userReducer, businessReducer } from '../login/slice';
 import businessRegisterReducer from '../businessreg/slice';  
 import profileReducer from '../profile/slice';
-import authReducer from '../chat/authSlice';
+//import authReducer from '../chat/authSlice';
 import chatReducer from '../chat/slice';
 
 export const store = configureStore({
@@ -13,7 +13,7 @@ export const store = configureStore({
     business: businessReducer,
     businessRegister: businessRegisterReducer,
     profile: profileReducer,
-    auth: authReducer,
+  //  auth: authReducer,
     chat: chatReducer,
     
   },
