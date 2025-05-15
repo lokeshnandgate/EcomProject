@@ -18,6 +18,7 @@ interface Product {
   image: string;
   inStock: boolean;
   addedBy: string;
+  addedById: string;
 
 }
 

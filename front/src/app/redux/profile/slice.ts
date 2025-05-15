@@ -60,6 +60,8 @@ const profileSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchBusinessProfile.fulfilled, (state, action) => {
+        console.log('business profile', action.payload);
+        console.log('business state profile', state);
         state.loading = false;
         state.business = action.payload;
       })

@@ -7,6 +7,7 @@ import {
   deleteProductById,
   updateProductById,
 } from '@/app/redux/products/action';
+import {fetchBusinessProfile} from'../redux/profile/action';
 import { addToWishlist } from '@/app/redux/products/slice';
 import { RootState } from '@/app/redux/store/store';
 import Navbar from '../components/navbar/page';
@@ -73,6 +74,7 @@ export default function DashboardPage() {
     dispatch(fetchProducts());
   }, [dispatch]);
 
+
   const handleDelete = useCallback((id: string) => {
     setIsDeleting(id);
     setTimeout(() => {
@@ -93,6 +95,8 @@ export default function DashboardPage() {
     });
     setShowModal(true);
   };
+
+
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -116,7 +120,10 @@ export default function DashboardPage() {
       reader.readAsDataURL(file);
     }
   };
-
+  const Gotoprofile = (product : Object) => {
+    dispatch(fetchBusinessProfile(product.addedById));
+    window.location.href = `/pages/profile`;
+    }
   const handleSubmit = async () => {
     if (!editingProduct) return;
 
@@ -245,9 +252,9 @@ export default function DashboardPage() {
                       </p>
 
                         <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <div className="flex items-center gap-2 text-xs text-gray-400" onClick={() => Gotoprofile(product)}>
                           <FiUser className="text-gray-500" />
-                          <span>{product.addedBy.substring(0, 8)}</span>
+                          <span > {product.addedBy.substring(0, 20)}</span>
                         </div>
                         <div className="flex gap-2">
                           <button

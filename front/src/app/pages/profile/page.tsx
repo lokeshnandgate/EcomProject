@@ -25,6 +25,7 @@ interface Product {
   image?: string;
   inStock: boolean;
   addedBy: string;
+  addedById: string;
 }
 
 const categoryIcons: Record<string, JSX.Element> = {
