@@ -67,6 +67,12 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  previewImage: {
+    type: String,
+    required: false,
+    match: /^(http|https):\/\/[^ "]+$/, // Must be a URL
+    default: null,
+  },
 });
 
 

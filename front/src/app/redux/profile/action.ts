@@ -1,6 +1,7 @@
 // redux/profile/profileActions.ts
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import axiosInstance from '@/utils/auth';
+import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -18,7 +19,6 @@ export const fetchUserProfile = createAsyncThunk(
     }
   }
 );
-
 
 // Update user profile
 export const updateUserProfile = createAsyncThunk(
@@ -58,6 +58,27 @@ export const updateBusinessProfile = createAsyncThunk(
       return response.data.business;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Error updating business profile');
+    }
+  }
+);
+
+// redux/profile/profileActions.ts
+export const fetchProfile = createAsyncThunk(
+  'profile/fetchProfile',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profile/fetch/profile`,
+        { id }
+      );
+      // Ensure the response has the expected structure
+      return response.data || {};
+    } catch (error: any) {
+      if (error.response && error.response.data.message) {
+        return rejectWithValue(error.response.data.message);
+      } else {
+        return rejectWithValue(error.message);
+      }
     }
   }
 );

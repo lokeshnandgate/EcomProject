@@ -23,18 +23,32 @@ const Navbar: React.FC = () => {
     if (!confirmLogout) return;
 
     const token = sessionStorage.getItem('token');
-    const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+    const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || 'http://localhost:3001';
 
     if (token) {
       try {
-        await axios.post(`${API_URL}/api/logout`, {}, {
+        const response = await axios.post(`${API_URL}/api/logout`, {}, {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
         });
+
+        if (response.status === 200) {
+          console.log('Logout successful');
+        } else {
+          console.warn('Unexpected response during logout:', response);
+        }
       } catch (error) {
-        console.error('Logout error:', error);
+        if (axios.isAxiosError(error)) {
+          if (error.response?.status === 404) {
+            console.error('Logout endpoint not found (404). Please check the API URL or ensure the endpoint is implemented on the server.');
+          } else {
+            console.error(`Logout error: ${error.response?.status} - ${error.response?.data?.message || error.message}`);
+          }
+        } else {
+          console.error('Unexpected error during logout:', error);
+        }
       }
     }
 
@@ -76,54 +90,56 @@ const Navbar: React.FC = () => {
       <nav className="navbar">
         <h1 className="navbar-title">UrbanCart</h1>
 
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Search products..."
-          className="search-input"
-        />
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Search products..."
+            className="search-input"
+          />
 
-        <div className="icons-container">
-          <button onClick={() => router.push('/pages/chat')} className="icon-button">
-            <img src="/chat.svg" alt="Chat" />
-          </button>
-
-          <button onClick={() => router.push('/pages/profile')} className="icon-button">
-            <img src="/profile.svg" alt="Profile" />
-          </button>
-
-          <div className="dropdown">
-            <button onClick={toggleDropdown} className="dropdown-button">
-              ▼
+          <div className="icons-container">
+            <button onClick={() => router.push('/pages/chat')} className="icon-button">
+              <img src="/chat.svg" alt="Chat" />
             </button>
-            {dropdownOpen && (
+
+            <button onClick={() => router.push('/pages/profile')} className="icon-button">
+              <img src="/profile.svg" alt="Profile" />
+            </button>
+
+            <div className="dropdown">
+              <button onClick={toggleDropdown} className="dropdown-button" style={{ backgroundColor: 'transparent', color: 'inherit', border: 'none', padding: 0, fontSize: '24px', cursor: 'pointer' }}>
+              ⋮
+              </button>
+              {dropdownOpen && (
               <div className="dropdown-menu">
                 <button onClick={handleAddToCart} className="dropdown-item">
-                  Add to Cart
+                Add to Cart
                 </button>
                 <button onClick={handleLogout} className="dropdown-item">
-                  Logout
+                Logout
                 </button>
               </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </nav>
+            </nav>
 
-      {searchResults.length > 0 && (
+            {searchResults.length > 0 && (
         <div className="search-results">
           {searchResults.map((product) => (
             <div key={product._id} className="search-result-item">
               <img src={product.image} alt={product.title} className="result-image" />
               <div>
-                <h4>{product.title}</h4>
-                <p>₹{product.price}</p>
+          <h4>{product.title}</h4>
+          <p>₹{product.price}</p>
               </div>
             </div>
           ))}
         </div>
-      )}
+            )}
 
       <style jsx>{`
         .navbar {

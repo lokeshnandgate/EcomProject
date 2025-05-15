@@ -1,10 +1,11 @@
 'use client';
-
-import React, { useEffect, useState, useCallback, JSX } from 'react';
-import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-import { fetchUserProfile, fetchBusinessProfile } from '../../redux/profile/action';
-import { fetchProductsByUserId, deleteProductById, updateProductById } from '../../redux/products/action';
-
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, JSX } from 'react';
+import { useSelector } from 'react-redux';
+import { useAppDispatch } from '../../../redux/hooks';
+import { fetchProfile } from '../../../redux/profile/action';
+import { RootState } from '../../../redux/store/store';
+import { fetchProductsByUserId, deleteProductById, updateProductById } from '../../../redux/products/action';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
@@ -51,15 +52,23 @@ const categoryLabels: Record<string, string> = {
   hyperlocalFarmDelivery: 'Farm Delivery'
 };
 
-export default function ProfileViewPage() {
+const ProfilePage = () => {
+  const { profileId } = useParams() as { profileId: string };
   const dispatch = useAppDispatch();
-  const { user, business, loading, error } = useAppSelector((state) => state.profile);
-  const { list: products, loading: productsLoading, error: productsError } = useAppSelector(
-    (state) => state.products
+  const router = useRouter();
+  
+  const {
+    userProfile,
+    businessProfile,
+    loading,
+    error,
+    
+  } = useSelector((state: RootState) => state.profile);
+
+  const { list: products, loading: productsLoading, error: productsError } = useSelector(
+    (state: RootState) => state.products
   );
 
-  const [userType, setUserType] = useState<'user' | 'business' | null>(null);
-  const [_id, setUserId] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -73,31 +82,37 @@ export default function ProfileViewPage() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'products'>('profile');
 
+  // Check if current user is the profile owner
+  const [isOwner, setIsOwner] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   useEffect(() => {
+    // Get current user ID from session storage
     const storedBusinessUser = sessionStorage.getItem('businessInfo');
     const storedUser = sessionStorage.getItem('userInfo');
-
+    
     if (storedBusinessUser) {
       const parsed = JSON.parse(storedBusinessUser);
       const user = parsed?.user || parsed;
-      if (user?.userType === 'businessUser' && user?._id) {
-        setUserType('business');
-        setUserId(user._id);
-        dispatch(fetchBusinessProfile(user._id));
-        dispatch(fetchProductsByUserId(user._id));
+      if (user?._id) {
+        setCurrentUserId(user._id);
+        setIsOwner(user._id === profileId);
+      }
+    } else if (storedUser) {
+      const parsed = JSON.parse(storedUser);
+      const user = parsed?.user || parsed;
+      if (user?._id) {
+        setCurrentUserId(user._id);
+        setIsOwner(user._id === profileId);
       }
     }
 
-    if (storedUser) {
-      const parsed = JSON.parse(storedUser);
-      const user = parsed?.user || parsed;
-      if (user?.userType === 'User' && user?._id) {
-        setUserType('user');
-        setUserId(user._id);
-        dispatch(fetchUserProfile(user._id));
-      }
+    // Fetch profile and products
+    if (profileId) {
+      dispatch(fetchProfile(profileId));
+      dispatch(fetchProductsByUserId(profileId)); // Only fetch products for this user
     }
-  }, [dispatch]);
+  }, [profileId, dispatch]);
 
   const handleDeleteProduct = useCallback((productId: string) => {
     setIsDeleting(productId);
@@ -144,13 +159,13 @@ export default function ProfileViewPage() {
   };
 
   const handleSubmit = async () => {
-    if (!editingProduct || !_id) return;
+    if (!editingProduct || !profileId) return;
 
     const updatedProduct = {
       ...formData,
       price: parseFloat(formData.price),
       inStock: Boolean(formData.inStock),
-      addedBy: _id,
+      addedBy: profileId,
       image: formData.image,
       productId: editingProduct._id,
     };
@@ -160,49 +175,88 @@ export default function ProfileViewPage() {
     setEditingProduct(null);
   };
 
-  const profile = userType === 'business' ? business : user;
+  if (loading || productsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-lg font-medium text-purple-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (loading || productsLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
-      <div className="text-center">
-        <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p className="mt-4 text-lg font-medium text-purple-600">Loading your profile...</p>
-      </div>
-    </div>
-  );
-  
-  if (error) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
-      <div className="bg-white p-8 rounded-xl shadow-lg max-w-md text-center">
-        <div className="text-red-500 text-5xl mb-4">⚠️</div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Profile</h2>
-        <p className="text-gray-600 mb-6">{error}</p>
-        <Link href="/dashboard">
-          <button className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
-            Back to Dashboard
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md text-center">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Profile</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+          >
+            Try Again
           </button>
-        </Link>
+        </div>
       </div>
-    </div>
-  );
-  
-  if (productsError) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
-      <div className="bg-white p-8 rounded-xl shadow-lg max-w-md text-center">
-        <div className="text-red-500 text-5xl mb-4">⚠️</div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Products</h2>
-        <p className="text-gray-600 mb-6">{productsError}</p>
-        <button 
-          onClick={() => window.location.reload()}
-          className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
-        >
-          Try Again
-        </button>
+    );
+  }
+
+  if (productsError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md text-center">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Products</h2>
+          <p className="text-gray-600 mb-6">{productsError}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
-    </div>
-  );
-  
-  if (!profile) return null;
+    );
+  }
+
+  const profile = businessProfile || userProfile;
+  const isBusinessProfile = !!businessProfile;
+
+  if (!profile) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="bg-white p-6 rounded-lg shadow-md max-w-md text-center">
+          <h2 className="text-xl font-bold mb-2">Profile Not Found</h2>
+          <p className="text-gray-600 mb-4">The requested profile could not be found.</p>
+          <button
+            onClick={() => router.push('/')}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Go to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Get profile data with fallbacks for different profile types
+  const profileData = {
+    profilePic: businessProfile?.logo || userProfile?.profilePicture || '/default-avatar.png',
+    username: businessProfile?.businessName || userProfile?.username || 'Unknown User',
+    email: businessProfile?.email || userProfile?.email || '' || 'Not provided',
+    contactNumber: businessProfile?.phone || userProfile?.phone || ''|| 'Not provided',
+    userType: businessProfile ? 'business' : 'user',
+    description: businessProfile?.businessDescription || userProfile?.bio || ''|| 'Not provided',
+    address: businessProfile?.businessAddress || userProfile?.location || ''|| 'Not provided',
+    location: businessProfile?.location || userProfile?.location || ''|| 'Not provided',
+    locationCoordinates: businessProfile?.locationCoordinates || userProfile?.locationCoordinates || '',
+    locationUrl: businessProfile?.locationUrl || '',
+    businessType: businessProfile?.businessType || '',
+    website: businessProfile?.website || userProfile?.website || ''
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -222,14 +276,16 @@ export default function ProfileViewPage() {
             </motion.button>
           </Link>
           
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg shadow-sm hover:shadow-md transition"
-          >
-            <FiEdit className="text-white" />
-            <Link href="/pages/profile/editprofile">Edit Profile</Link>
-          </motion.button>
+          {isOwner && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg shadow-sm hover:shadow-md transition"
+            >
+              <FiEdit className="text-white" />
+              <Link href="/pages/profile/editprofile">Edit Profile</Link>
+            </motion.button>
+          )}
         </div>
 
         {/* Profile Card */}
@@ -244,30 +300,30 @@ export default function ProfileViewPage() {
             <div className="md:w-1/3 bg-gradient-to-br from-purple-100 to-blue-100 p-8 flex flex-col items-center justify-center">
               <div className="relative">
                 <Image
-                  src={profile.profilePic || '/default-avatar.png'}
+                  src={profileData.profilePic}
                   width={160}
                   height={160}
                   className="rounded-full border-4 border-white shadow-lg"
                   alt="Profile Picture"
                 />
-                {userType === 'business' && (
+                {profileData.userType === 'business' && (
                   <div className="absolute -bottom-2 -right-2 bg-purple-600 text-white p-2 rounded-full">
                     <FaStore className="text-lg" />
                   </div>
                 )}
               </div>
-              <h2 className="text-2xl font-bold mt-4 text-gray-800">{profile.username}</h2>
+              <h2 className="text-2xl font-bold mt-4 text-gray-800">{profileData.username}</h2>
               <p className="text-purple-600 flex items-center gap-1 mt-1">
-                <FiMail className="text-sm" /> {profile.email}
+                <FiMail className="text-sm" /> {profileData.email}
               </p>
-              {profile.contactNumber && (
+              {profileData.contactNumber && (
                 <p className="text-gray-600 flex items-center gap-1 mt-1">
-                  <FiPhone className="text-sm" /> {profile.contactNumber}
+                  <FiPhone className="text-sm" /> {profileData.contactNumber}
                 </p>
               )}
             </div>
 
-            {/* Profile Details Section */}
+            Profile Details Section
             <div className="md:w-2/3 p-8">
               <div className="flex border-b border-gray-200 mb-6">
                 <button
@@ -276,12 +332,12 @@ export default function ProfileViewPage() {
                 >
                   Profile Info
                 </button>
-                {userType === 'business' && (
+                {isBusinessProfile && (
                   <button
                     onClick={() => setActiveTab('products')}
                     className={`px-4 py-2 font-medium ${activeTab === 'products' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}
                   >
-                    Your Products
+                    {isOwner ? 'Your Products' : 'Products'}
                   </button>
                 )}
               </div>
@@ -289,50 +345,50 @@ export default function ProfileViewPage() {
               {activeTab === 'profile' ? (
                 <div className="space-y-6">
                   {/* Business Type */}
-                  {userType === 'business' && (
+                  {isBusinessProfile && profileData.businessType && (
                     <div>
                       <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Business Type</h3>
                       <p className="mt-1 text-lg font-medium text-gray-800 flex items-center gap-2">
                         <FiBriefcase className="text-purple-500" /> 
-                        {profile.businessType || 'Not specified'}
+                        {profileData.businessType}
                       </p>
                     </div>
                   )}
 
                   {/* Description */}
-                  {profile.description && (
+                  {profileData.description && (
                     <div>
                       <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">About</h3>
                       <p className="mt-1 text-gray-700 flex items-start gap-2">
                         <FiInfo className="text-purple-500 mt-1 flex-shrink-0" /> 
-                        {profile.description}
+                        {profileData.description}
                       </p>
                     </div>
                   )}
 
                   {/* Address */}
-                  {profile.address && (
+                  {profileData.address && (
                     <div>
                       <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Address</h3>
                       <p className="mt-1 text-gray-700 flex items-start gap-2">
                         <FiMapPin className="text-purple-500 mt-1 flex-shrink-0" /> 
-                        {profile.address}
+                        {profileData.address}
                       </p>
                     </div>
                   )}
 
-                  {/* Location URL */}
-                  {profile.locationUrl && (
+                  {/* Website */}
+                  {profileData.website && (
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Location</h3>
+                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Website</h3>
                       <a 
-                        href={profile.locationUrl} 
+                        href={profileData.website} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="mt-1 text-blue-600 hover:underline flex items-center gap-2"
                       >
                         <FiGlobe className="text-purple-500" /> 
-                        {profile.locationUrl}
+                        {profileData.website}
                       </a>
                     </div>
                   )}
@@ -340,28 +396,33 @@ export default function ProfileViewPage() {
               ) : (
                 <div>
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold text-gray-800">Your Products</h3>
-                    <Link href="/pages/addproduct">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg shadow-sm hover:shadow-md transition"
-                      >
-                        <FiPlus /> Add Product
-                      </motion.button>
-                    </Link>
+                    <h3 className="text-xl font-bold text-gray-800">
+                      {isOwner ? 'Your Products' : 'Products'}
+                    </h3>
+                    {isOwner && (
+                      <Link href="/pages/addproduct">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg shadow-sm hover:shadow-md transition"
+                        >
+                          <FiPlus /> Add Product
+                        </motion.button>
+                      </Link>
+                    )}
                   </div>
 
                   {products.length === 0 ? (
                     <div className="text-center py-12">
                       <FaBoxOpen className="mx-auto text-4xl text-gray-300 mb-4" />
                       <h4 className="text-lg font-medium text-gray-500">No products yet</h4>
-                      <p className="text-gray-400 mt-2">Add your first product to get started</p>
-                      <Link href="/pages/addproduct">
-                        <button className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
-                          Add Product
-                        </button>
-                      </Link>
+                      {isOwner && (
+                        <Link href="/pages/addproduct">
+                          <button className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                            Add Product
+                          </button>
+                        </Link>
+                      )}
                     </div>
                   ) : (
                     <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -406,26 +467,28 @@ export default function ProfileViewPage() {
                                 <p className="font-bold text-purple-600 flex items-center">
                                   <FaRupeeSign className="mr-1" /> {product.price.toFixed(2)}
                                 </p>
-                                <div className="flex gap-2">
-                                  <motion.button
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                    onClick={() => handleEditClick(product)}
-                                    className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition"
-                                    title="Edit"
-                                  >
-                                    <FiEdit size={16} />
-                                  </motion.button>
-                                  <motion.button
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                    onClick={() => handleDeleteProduct(product._id)}
-                                    className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition"
-                                    title="Delete"
-                                  >
-                                    <FiTrash2 size={16} />
-                                  </motion.button>
-                                </div>
+                                {isOwner && (
+                                  <div className="flex gap-2">
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => handleEditClick(product)}
+                                      className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition"
+                                      title="Edit"
+                                    >
+                                      <FiEdit size={16} />
+                                    </motion.button>
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => handleDeleteProduct(product._id)}
+                                      className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition"
+                                      title="Delete"
+                                    >
+                                      <FiTrash2 size={16} />
+                                    </motion.button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -523,9 +586,7 @@ export default function ProfileViewPage() {
                         <option value="">Select a category</option>
                         {Object.entries(categoryLabels).map(([value, label]) => (
                           <option key={value} value={value}>
-                            <div className="flex items-center gap-2">
-                              {categoryIcons[value]} {label}
-                            </div>
+                            {label}
                           </option>
                         ))}
                       </select>
@@ -603,4 +664,6 @@ export default function ProfileViewPage() {
       </div>
     </div>
   );
-}
+};
+
+export default ProfilePage;

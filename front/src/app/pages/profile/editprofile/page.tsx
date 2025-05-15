@@ -58,11 +58,11 @@ export default function EditProfilePage() {
   useEffect(() => {
     if (userType === 'user' && user) {
       setFormData(user);
-      setPreviewImage(user.profilePic || '');
+      setPreviewImage(user.profilePic || '/default-avatar.png');
     }
     if (userType === 'business' && business) {
       setFormData(business);
-      setPreviewImage(business.profilePic || '');
+      setPreviewImage(business.profilePic || '/default-avatar.png');
     }
   }, [user, business, userType]);
 
@@ -76,11 +76,28 @@ export default function EditProfilePage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check if file is an image
+      if (!file.type.match('image.*')) {
+        alert('Please select an image file (jpg, jpeg, png, gif)');
+        return;
+      }
+
+      // Check file size (limit to 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB');
+        return;
+      }
+
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setPreviewImage(base64String);
-        setFormData((prev: any) => ({ ...prev, profilePic: base64String }));
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const imageUrl = event.target.result as string;
+          setPreviewImage(imageUrl);
+          setFormData((prev: any) => ({ 
+            ...prev, 
+            profilePic: imageUrl 
+          }));
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -102,13 +119,17 @@ export default function EditProfilePage() {
       ...(userType === 'business' && { businessType: formData.businessType }),
     };
 
-    if (userType === 'business') {
-      await dispatch(updateBusinessProfile(submitData));
-    } else {
-      await dispatch(updateUserProfile(submitData));
-    }
+    try {
+      if (userType === 'business') {
+        await dispatch(updateBusinessProfile(submitData));
+      } else {
+        await dispatch(updateUserProfile(submitData));
+      }
 
-    window.location.href = '/pages/profile';
+      window.location.href = '/pages/profile';
+    } catch (err) {
+      console.error('Error updating profile:', err);
+    }
   };
 
   if (loading) return (
@@ -173,9 +194,13 @@ export default function EditProfilePage() {
               <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-xl relative ring-4 ring-purple-200/50">
                 <Image
                   src={previewImage || '/default-avatar.png'}
-                  fill
+                  width={128}
+                  height={128}
                   className="object-cover"
                   alt="Profile"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/default-avatar.png';
+                  }}
                 />
               </div>
               <label className="absolute -bottom-2 -right-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-3 rounded-full cursor-pointer shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 group-hover:opacity-100">
@@ -188,6 +213,8 @@ export default function EditProfilePage() {
                 />
               </label>
             </div>
+            <p className="mt-2 text-sm text-gray-500">Click on camera icon to upload profile picture</p>
+            <p className="text-xs text-gray-400">Supports: JPG, PNG, GIF (Max 5MB)</p>
           </div>
 
           {/* Form Fields */}

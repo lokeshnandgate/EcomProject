@@ -73,5 +73,14 @@ const businessSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+businessSchema.add({
+  previewImage: {
+    type: String,
+    required: false,
+    match: /^(http|https):\/\/[^ "]+$/, // URL validation
+    default: null,
+  },
+});
+
 const business= mongoose.model('Business', businessSchema);
 module.exports = business;

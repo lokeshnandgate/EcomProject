@@ -1,17 +1,32 @@
-// redux/profile/profileSlice.ts
-import { createSlice } from '@reduxjs/toolkit';
+// redux/profile/slice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
   fetchUserProfile,
   updateUserProfile,
   fetchBusinessProfile,
   updateBusinessProfile,
+  fetchProfile
 } from './action';
 
-const initialState = {
+interface ProfileState {
+  loading: boolean;
+  error: string | null;
+  user: any | null;
+  business: any | null;
+  userProfile: any | null;
+  businessProfile: any | null;
+  previewImage: string | null;
+
+}
+
+const initialState: ProfileState = {
   loading: false,
-  error: null as string | null,
-  user: null as any,
-  business: null as any,
+  error: null,
+  user: null,
+  business: null,
+  userProfile: null,
+  businessProfile: null,
+  previewImage: null,
 };
 
 const profileSlice = createSlice({
@@ -21,70 +36,74 @@ const profileSlice = createSlice({
     clearProfile: (state) => {
       state.user = null;
       state.business = null;
+      state.userProfile = null;
+      state.businessProfile = null;
       state.error = null;
+      state.loading = false;
     },
+    resetError: (state) => {
+      state.error = null;
+    }
   },
   extraReducers: (builder) => {
+    // Common loading and error handling
+    const handlePending = (state: ProfileState) => {
+      state.loading = true;
+      state.error = null;
+    };
+    
+    const handleRejected = (state: ProfileState, action: PayloadAction<any>) => {
+      state.loading = false;
+      state.error = action.payload;
+    };
+
     builder
       // Fetch user profile
-      .addCase(fetchUserProfile.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchUserProfile.fulfilled, (state, action) => {
+      .addCase(fetchUserProfile.pending, handlePending)
+      .addCase(fetchUserProfile.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.user = action.payload;
       })
-      .addCase(fetchUserProfile.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
+      .addCase(fetchUserProfile.rejected, handleRejected)
 
       // Update user profile
-      .addCase(updateUserProfile.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(updateUserProfile.fulfilled, (state, action) => {
+      .addCase(updateUserProfile.pending, handlePending)
+      .addCase(updateUserProfile.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.user = action.payload;
       })
-      .addCase(updateUserProfile.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
+      .addCase(updateUserProfile.rejected, handleRejected)
 
       // Fetch business profile
-      .addCase(fetchBusinessProfile.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchBusinessProfile.fulfilled, (state, action) => {
-        console.log('business profile', action.payload);
-        console.log('business state profile', state);
+      .addCase(fetchBusinessProfile.pending, handlePending)
+      .addCase(fetchBusinessProfile.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.business = action.payload;
       })
-      .addCase(fetchBusinessProfile.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
+      .addCase(fetchBusinessProfile.rejected, handleRejected)
 
       // Update business profile
-      .addCase(updateBusinessProfile.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(updateBusinessProfile.fulfilled, (state, action) => {
+      .addCase(updateBusinessProfile.pending, handlePending)
+      .addCase(updateBusinessProfile.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.business = action.payload;
       })
-      .addCase(updateBusinessProfile.rejected, (state, action) => {
+      .addCase(updateBusinessProfile.rejected, handleRejected)
+
+      // Fetch profile (generic)
+      .addCase(fetchProfile.pending, handlePending)
+      .addCase(fetchProfile.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
-        state.error = action.payload as string;
-      });
+        const payload = action.payload || {};
+        if ('user' in payload) {
+          state.userProfile = payload.user;
+        } else if ('businessUser' in payload) {
+          state.businessProfile = payload.businessUser;
+        }
+      })
+      .addCase(fetchProfile.rejected, handleRejected);
   },
 });
 
-export const { clearProfile } = profileSlice.actions;
+export const { clearProfile, resetError } = profileSlice.actions;
 export default profileSlice.reducer;

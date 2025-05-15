@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchProducts,
   deleteProductById,
   updateProductById,
 } from '@/app/redux/products/action';
-import {fetchBusinessProfile} from'../redux/profile/action';
+import {fetchProfile} from'../redux/profile/action';
 import { addToWishlist } from '@/app/redux/products/slice';
 import { RootState } from '@/app/redux/store/store';
 import Navbar from '../components/navbar/page';
@@ -24,6 +25,7 @@ interface Product {
   image?: string;
   inStock: boolean;
   addedBy: string;
+  addedById: string;
 }
 
 const categoryIcons: Record<string, string> = {
@@ -120,10 +122,14 @@ export default function DashboardPage() {
       reader.readAsDataURL(file);
     }
   };
-  const Gotoprofile = (product : Object) => {
-    dispatch(fetchBusinessProfile(product.addedById));
-    window.location.href = `/pages/profile`;
+  const router = useRouter();
+  const Gotoprofile = (product: Product) => {
+    if (product.addedBy) {
+      dispatch(fetchProfile(product.addedById));
+      router.push(`/pages/profile/${product.addedById}`);
     }
+  };
+  
   const handleSubmit = async () => {
     if (!editingProduct) return;
 
