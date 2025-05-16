@@ -57,6 +57,7 @@ export default function DashboardPage() {
   const products = useSelector((state: RootState) => state.products.list);
   const loading = useSelector((state: RootState) => state.products.loading);
   const businessInfo = useSelector((state: RootState) => state.business.businessInfo);
+  const user = useSelector((state: RootState) => state.user);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
@@ -75,7 +76,6 @@ export default function DashboardPage() {
   useEffect(() => {
     dispatch(fetchProducts());
   }, [dispatch]);
-
 
   const handleDelete = useCallback((id: string) => {
     setIsDeleting(id);
@@ -97,8 +97,6 @@ export default function DashboardPage() {
     });
     setShowModal(true);
   };
-
-
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -122,6 +120,7 @@ export default function DashboardPage() {
       reader.readAsDataURL(file);
     }
   };
+
   const router = useRouter();
   const Gotoprofile = (product: Product) => {
     if (product.addedBy) {
@@ -152,6 +151,11 @@ export default function DashboardPage() {
     (businessTypeFilter === '' || product.category === businessTypeFilter) &&
     product.addedBy !== undefined
   );
+
+  // Check if current user is the owner of the product
+  const isProductOwner = (product: Product) => {
+    return user && product.addedById === user._id;
+  };
 
   return (
     <>
@@ -257,10 +261,13 @@ export default function DashboardPage() {
                         {product.description}
                       </p>
 
-                        <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center gap-2 text-xs text-gray-400" onClick={() => Gotoprofile(product)}>
+                      <div className="flex items-center justify-between mt-4">
+                        <div 
+                          className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
+                          onClick={() => Gotoprofile(product)}
+                        >
                           <FiUser className="text-gray-500" />
-                          <span > {product.addedBy.substring(0, 20)}</span>
+                          <span>{product.addedBy.substring(0, 20)}</span>
                         </div>
                         <div className="flex gap-2">
                           <button
@@ -271,7 +278,8 @@ export default function DashboardPage() {
                             <FiHeart />
                           </button>
 
-                          {businessInfo && (
+                          {/* Only show edit/delete buttons if user is the product owner */}
+                          {isProductOwner(product) && (
                             <>
                               <button
                                 onClick={() => handleEditClick(product)}

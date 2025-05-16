@@ -1,10 +1,8 @@
 'use client';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, JSX } from 'react';
-import { useSelector } from 'react-redux';
-import { useAppDispatch } from '../../../redux/hooks';
-import { fetchProfile } from '../../../redux/profile/action';
-import { RootState } from '../../../redux/store/store';
+import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
+import { fetchUserProfile, fetchBusinessProfile, updateUserProfile, updateBusinessProfile } from '../../../redux/profile/action';
 import { fetchProductsByUserId, deleteProductById, updateProductById } from '../../../redux/products/action';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -57,18 +55,13 @@ const ProfilePage = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
   
-  const {
-    userProfile,
-    businessProfile,
-    loading,
-    error,
-    
-  } = useSelector((state: RootState) => state.profile);
-
-  const { list: products, loading: productsLoading, error: productsError } = useSelector(
-    (state: RootState) => state.products
+  const { user, business, loading, error } = useAppSelector((state) => state.profile);
+  const { list: products, loading: productsLoading, error: productsError } = useAppSelector(
+    (state) => state.products
   );
 
+  const [userType, setUserType] = useState<'user' | 'business' | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -81,38 +74,95 @@ const ProfilePage = () => {
   const [showModal, setShowModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'products'>('profile');
-
-  // Check if current user is the profile owner
-  const [isOwner, setIsOwner] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileFormData, setProfileFormData] = useState({
+    username: '',
+    email: '',
+    contactNumber: '',
+    description: '',
+    address: '',
+    locationUrl: '',
+    businessType: '',
+    profilePic: ''
+  });
 
   useEffect(() => {
-    // Get current user ID from session storage
-    const storedBusinessUser = sessionStorage.getItem('businessInfo');
-    const storedUser = sessionStorage.getItem('userInfo');
-    
-    if (storedBusinessUser) {
-      const parsed = JSON.parse(storedBusinessUser);
-      const user = parsed?.user || parsed;
-      if (user?._id) {
-        setCurrentUserId(user._id);
-        setIsOwner(user._id === profileId);
-      }
-    } else if (storedUser) {
-      const parsed = JSON.parse(storedUser);
-      const user = parsed?.user || parsed;
-      if (user?._id) {
-        setCurrentUserId(user._id);
-        setIsOwner(user._id === profileId);
-      }
-    }
+    const fetchProfileData = async () => {
+      try {
+        // Check if current user is the profile owner
+        const storedBusinessUser = sessionStorage.getItem('businessInfo');
+        const storedUser = sessionStorage.getItem('userInfo');
+        
+        let currentUserType: 'user' | 'business' | null = null;
+        let currentIsOwner = false;
 
-    // Fetch profile and products
+        if (storedBusinessUser) {
+          const parsed = JSON.parse(storedBusinessUser);
+          const user = parsed?.user || parsed;
+          if (user?._id) {
+            currentUserType = 'business';
+            currentIsOwner = user._id === profileId;
+          }
+        } else if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          const user = parsed?.user || parsed;
+          if (user?._id) {
+            currentUserType = 'user';
+            currentIsOwner = user._id === profileId;
+          }
+        }
+
+        setUserType(currentUserType);
+        setIsOwner(currentIsOwner);
+
+        // Validate profileId is a valid MongoDB ObjectId before making the request
+        if (profileId && /^[0-9a-fA-F]{24}$/.test(profileId)) {
+          if (currentUserType === 'business') {
+            await dispatch(fetchBusinessProfile(profileId));
+          } else {
+            await dispatch(fetchUserProfile(profileId));
+          }
+          await dispatch(fetchProductsByUserId(profileId));
+        } else {
+          console.warn('Invalid or missing profileId format:', profileId);
+          router.push('/dashboard');
+        }
+      } catch (err) {
+        console.error('Error fetching profile data:', err);
+      }
+    };
+
     if (profileId) {
-      dispatch(fetchProfile(profileId));
-      dispatch(fetchProductsByUserId(profileId)); // Only fetch products for this user
+      console.log('Fetching profile for ID:', profileId);
+      fetchProfileData();
     }
-  }, [profileId, dispatch]);
+  }, [profileId, dispatch, router]);
+
+  useEffect(() => {
+    if (userType === 'business' && business) {
+      setProfileFormData({
+        username: business.username || '',
+        email: business.email || '',
+        contactNumber: business.contactNumber || '',
+        description: business.description || '',
+        address: business.address || '',
+        locationUrl: business.locationUrl || '',
+        businessType: business.businessType || '',
+        profilePic: business.profilePic || ''
+      });
+    } else if (userType === 'user' && user) {
+      setProfileFormData({
+        username: user.username || '',
+        email: user.email || '',
+        contactNumber: user.contactNumber || '',
+        description: user.description || '',
+        address: user.address || '',
+        locationUrl: user.locationUrl || '',
+        businessType: '',
+        profilePic: user.profilePic || ''
+      });
+    }
+  }, [user, business, userType]);
 
   const handleDeleteProduct = useCallback((productId: string) => {
     setIsDeleting(productId);
@@ -144,7 +194,29 @@ const ProfilePage = () => {
     }));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setProfileFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileFormData(prev => ({
+          ...prev,
+          profilePic: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -158,21 +230,52 @@ const ProfilePage = () => {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleProfileSubmit = async () => {
+    try {
+      if (userType === 'business') {
+        await dispatch(updateBusinessProfile({
+          ...profileFormData,
+          id: profileId
+        }));
+      } else {
+        await dispatch(updateUserProfile({
+          ...profileFormData,
+          id: profileId
+        }));
+      }
+      setIsEditingProfile(false);
+      // Refresh profile data
+      if (userType === 'business') {
+        await dispatch(fetchBusinessProfile(profileId));
+      } else {
+        await dispatch(fetchUserProfile(profileId));
+      }
+    } catch (err) {
+      console.error('Error updating profile:', err);
+    }
+  };
+
+  const handleProductSubmit = async () => {
     if (!editingProduct || !profileId) return;
 
-    const updatedProduct = {
-      ...formData,
-      price: parseFloat(formData.price),
-      inStock: Boolean(formData.inStock),
-      addedBy: profileId,
-      image: formData.image,
-      productId: editingProduct._id,
-    };
+    try {
+      const updatedProduct = {
+        ...formData,
+        price: parseFloat(formData.price),
+        inStock: Boolean(formData.inStock),
+        addedBy: profileId,
+        image: formData.image,
+        productId: editingProduct._id,
+      };
 
-    await dispatch(updateProductById(updatedProduct));
-    setShowModal(false);
-    setEditingProduct(null);
+      await dispatch(updateProductById(updatedProduct));
+      setShowModal(false);
+      setEditingProduct(null);
+      // Refresh products
+      await dispatch(fetchProductsByUserId(profileId));
+    } catch (err) {
+      console.error('Error updating product:', err);
+    }
   };
 
   if (loading || productsLoading) {
@@ -194,10 +297,10 @@ const ProfilePage = () => {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Profile</h2>
           <p className="text-gray-600 mb-6">{error}</p>
           <button 
-            onClick={() => window.location.reload()}
+            onClick={() => router.push('/dashboard')}
             className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
           >
-            Try Again
+            Back to Dashboard
           </button>
         </div>
       </div>
@@ -222,8 +325,8 @@ const ProfilePage = () => {
     );
   }
 
-  const profile = businessProfile || userProfile;
-  const isBusinessProfile = !!businessProfile;
+  const profile = userType === 'business' ? business : user;
+  const isBusinessProfile = userType === 'business';
 
   if (!profile) {
     return (
@@ -232,31 +335,15 @@ const ProfilePage = () => {
           <h2 className="text-xl font-bold mb-2">Profile Not Found</h2>
           <p className="text-gray-600 mb-4">The requested profile could not be found.</p>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/dashboard')}
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
           >
-            Go to Home
+            Back to Dashboard
           </button>
         </div>
       </div>
     );
   }
-
-  // Get profile data with fallbacks for different profile types
-  const profileData = {
-    profilePic: businessProfile?.logo || userProfile?.profilePicture || '/default-avatar.png',
-    username: businessProfile?.businessName || userProfile?.username || 'Unknown User',
-    email: businessProfile?.email || userProfile?.email || '' || 'Not provided',
-    contactNumber: businessProfile?.phone || userProfile?.phone || ''|| 'Not provided',
-    userType: businessProfile ? 'business' : 'user',
-    description: businessProfile?.businessDescription || userProfile?.bio || ''|| 'Not provided',
-    address: businessProfile?.businessAddress || userProfile?.location || ''|| 'Not provided',
-    location: businessProfile?.location || userProfile?.location || ''|| 'Not provided',
-    locationCoordinates: businessProfile?.locationCoordinates || userProfile?.locationCoordinates || '',
-    locationUrl: businessProfile?.locationUrl || '',
-    businessType: businessProfile?.businessType || '',
-    website: businessProfile?.website || userProfile?.website || ''
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -276,15 +363,38 @@ const ProfilePage = () => {
             </motion.button>
           </Link>
           
-          {isOwner && (
+          {isOwner && !isEditingProfile && (
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => setIsEditingProfile(true)}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg shadow-sm hover:shadow-md transition"
             >
               <FiEdit className="text-white" />
-              <Link href="/pages/profile/editprofile">Edit Profile</Link>
+              Edit Profile
             </motion.button>
+          )}
+          {isEditingProfile && (
+            <div className="flex gap-2">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsEditingProfile(false)}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg shadow-sm hover:shadow-md transition"
+              >
+                <FiX className="text-white" />
+                Cancel
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleProfileSubmit}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg shadow-sm hover:shadow-md transition"
+              >
+                <FiCheck className="text-white" />
+                Save Changes
+              </motion.button>
+            </div>
           )}
         </div>
 
@@ -299,31 +409,90 @@ const ProfilePage = () => {
             {/* Profile Image Section */}
             <div className="md:w-1/3 bg-gradient-to-br from-purple-100 to-blue-100 p-8 flex flex-col items-center justify-center">
               <div className="relative">
-                <Image
-                  src={profileData.profilePic}
-                  width={160}
-                  height={160}
-                  className="rounded-full border-4 border-white shadow-lg"
-                  alt="Profile Picture"
-                />
-                {profileData.userType === 'business' && (
+                {isEditingProfile ? (
+                  <div className="relative">
+                    <Image
+                      src={profileFormData.profilePic || '/default-avatar.png'}
+                      width={160}
+                      height={160}
+                      className="rounded-full border-4 border-white shadow-lg"
+                      alt="Profile Picture"
+                    />
+                    <label className="absolute bottom-0 right-0 bg-purple-600 text-white p-2 rounded-full cursor-pointer hover:bg-purple-700 transition">
+                      <FiUpload className="text-lg" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfileImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <Image
+                    src={profile.profilePic || '/default-avatar.png'}
+                    width={160}
+                    height={160}
+                    className="rounded-full border-4 border-white shadow-lg"
+                    alt="Profile Picture"
+                  />
+                )}
+                {isBusinessProfile && (
                   <div className="absolute -bottom-2 -right-2 bg-purple-600 text-white p-2 rounded-full">
                     <FaStore className="text-lg" />
                   </div>
                 )}
               </div>
-              <h2 className="text-2xl font-bold mt-4 text-gray-800">{profileData.username}</h2>
-              <p className="text-purple-600 flex items-center gap-1 mt-1">
-                <FiMail className="text-sm" /> {profileData.email}
-              </p>
-              {profileData.contactNumber && (
-                <p className="text-gray-600 flex items-center gap-1 mt-1">
-                  <FiPhone className="text-sm" /> {profileData.contactNumber}
-                </p>
+              
+              {isEditingProfile ? (
+                <input
+                  name="username"
+                  value={profileFormData.username}
+                  onChange={handleProfileFormChange}
+                  className="text-2xl font-bold mt-4 text-gray-800 bg-transparent border-b border-gray-300 focus:border-purple-500 focus:outline-none text-center"
+                />
+              ) : (
+                <h2 className="text-2xl font-bold mt-4 text-gray-800">{profile.username}</h2>
               )}
+              
+              <div className="mt-4 w-full space-y-2">
+                {isEditingProfile ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <FiMail className="text-purple-500" />
+                      <input
+                        name="email"
+                        value={profileFormData.email}
+                        onChange={handleProfileFormChange}
+                        className="flex-1 bg-transparent border-b border-gray-300 focus:border-purple-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FiPhone className="text-purple-500" />
+                      <input
+                        name="contactNumber"
+                        value={profileFormData.contactNumber}
+                        onChange={handleProfileFormChange}
+                        className="flex-1 bg-transparent border-b border-gray-300 focus:border-purple-500 focus:outline-none"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-purple-600 flex items-center gap-1">
+                      <FiMail className="text-sm" /> {profile.email}
+                    </p>
+                    {profile.contactNumber && (
+                      <p className="text-gray-600 flex items-center gap-1">
+                        <FiPhone className="text-sm" /> {profile.contactNumber}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
 
-            Profile Details Section
+            {/* Profile Details Section */}
             <div className="md:w-2/3 p-8">
               <div className="flex border-b border-gray-200 mb-6">
                 <button
@@ -345,53 +514,89 @@ const ProfilePage = () => {
               {activeTab === 'profile' ? (
                 <div className="space-y-6">
                   {/* Business Type */}
-                  {isBusinessProfile && profileData.businessType && (
+                  {isBusinessProfile && (
                     <div>
                       <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Business Type</h3>
-                      <p className="mt-1 text-lg font-medium text-gray-800 flex items-center gap-2">
-                        <FiBriefcase className="text-purple-500" /> 
-                        {profileData.businessType}
-                      </p>
+                      {isEditingProfile ? (
+                        <input
+                          name="businessType"
+                          value={profileFormData.businessType}
+                          onChange={handleProfileFormChange}
+                          className="mt-1 text-lg font-medium text-gray-800 w-full bg-transparent border-b border-gray-300 focus:border-purple-500 focus:outline-none"
+                        />
+                      ) : (
+                        <p className="mt-1 text-lg font-medium text-gray-800 flex items-center gap-2">
+                          <FiBriefcase className="text-purple-500" /> 
+                          {profile.businessType || 'Not specified'}
+                        </p>
+                      )}
                     </div>
                   )}
 
                   {/* Description */}
-                  {profileData.description && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">About</h3>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">About</h3>
+                    {isEditingProfile ? (
+                      <textarea
+                        name="description"
+                        value={profileFormData.description}
+                        onChange={handleProfileFormChange}
+                        className="mt-1 text-gray-700 w-full bg-transparent border-b border-gray-300 focus:border-purple-500 focus:outline-none min-h-[100px]"
+                      />
+                    ) : profile.description ? (
                       <p className="mt-1 text-gray-700 flex items-start gap-2">
                         <FiInfo className="text-purple-500 mt-1 flex-shrink-0" /> 
-                        {profileData.description}
+                        {profile.description}
                       </p>
-                    </div>
-                  )}
+                    ) : (
+                      <p className="mt-1 text-gray-400 italic">No description provided</p>
+                    )}
+                  </div>
 
                   {/* Address */}
-                  {profileData.address && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Address</h3>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Address</h3>
+                    {isEditingProfile ? (
+                      <input
+                        name="address"
+                        value={profileFormData.address}
+                        onChange={handleProfileFormChange}
+                        className="mt-1 text-gray-700 w-full bg-transparent border-b border-gray-300 focus:border-purple-500 focus:outline-none"
+                      />
+                    ) : profile.address ? (
                       <p className="mt-1 text-gray-700 flex items-start gap-2">
                         <FiMapPin className="text-purple-500 mt-1 flex-shrink-0" /> 
-                        {profileData.address}
+                        {profile.address}
                       </p>
-                    </div>
-                  )}
+                    ) : (
+                      <p className="mt-1 text-gray-400 italic">No address provided</p>
+                    )}
+                  </div>
 
-                  {/* Website */}
-                  {profileData.website && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Website</h3>
+                  {/* Location URL */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Location</h3>
+                    {isEditingProfile ? (
+                      <input
+                        name="locationUrl"
+                        value={profileFormData.locationUrl}
+                        onChange={handleProfileFormChange}
+                        className="mt-1 text-blue-600 w-full bg-transparent border-b border-gray-300 focus:border-purple-500 focus:outline-none"
+                      />
+                    ) : profile.locationUrl ? (
                       <a 
-                        href={profileData.website} 
+                        href={profile.locationUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="mt-1 text-blue-600 hover:underline flex items-center gap-2"
                       >
                         <FiGlobe className="text-purple-500" /> 
-                        {profileData.website}
+                        {profile.locationUrl}
                       </a>
-                    </div>
-                  )}
+                    ) : (
+                      <p className="mt-1 text-gray-400 italic">No location URL provided</p>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div>
@@ -615,7 +820,7 @@ const ProfilePage = () => {
                             <input
                               type="file"
                               accept="image/*"
-                              onChange={handleImageUpload}
+                              onChange={handleProductImageUpload}
                               className="hidden"
                             />
                           </div>
@@ -650,7 +855,7 @@ const ProfilePage = () => {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={handleSubmit}
+                      onClick={handleProductSubmit}
                       className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
                     >
                       <FiCheck /> Save Changes

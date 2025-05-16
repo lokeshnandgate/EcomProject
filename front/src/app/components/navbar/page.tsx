@@ -17,7 +17,26 @@ const Navbar: React.FC = () => {
   const handleChat = () => {
     router.push('/pages/chat');
   };
+const gotoprofile = () => {
+  const userInfo = typeof window !== 'undefined' ? sessionStorage.getItem('userInfo') : null;
+  const businessInfo = typeof window !== 'undefined' ? sessionStorage.getItem('businessInfo') : null;
 
+  router.push(`/pages/profile/${userInfo ? JSON.parse(userInfo)._id : businessInfo ? JSON.parse(businessInfo)._id : ''}`);
+}
+
+const fetchCurrentUser = () => {
+  if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
+    const userInfo = sessionStorage.getItem('userInfo');
+    const businessInfo = sessionStorage.getItem('businessInfo');
+
+    if (userInfo) {
+      return JSON.parse(userInfo);
+    } else if (businessInfo) {
+      return JSON.parse(businessInfo);
+    }
+  }
+  return null;
+};
   const handleLogout = async () => {
     const confirmLogout = confirm('Do you want to logout?');
     if (!confirmLogout) return;
@@ -104,8 +123,8 @@ const Navbar: React.FC = () => {
               <img src="/chat.svg" alt="Chat" />
             </button>
 
-            <button onClick={() => router.push('/pages/profile')} className="icon-button">
-              <img src="/profile.svg" alt="Profile" />
+            <button onClick={gotoprofile} className="icon-button">
+              <img src={fetchCurrentUser()?.previewImage || '/default-profile.png'} alt="Profile" />
             </button>
 
             <div className="dropdown">

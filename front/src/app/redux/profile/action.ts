@@ -62,18 +62,19 @@ export const updateBusinessProfile = createAsyncThunk(
   }
 );
 
-// redux/profile/profileActions.ts
 export const fetchProfile = createAsyncThunk(
   'profile/fetchProfile',
   async (id: string, { rejectWithValue }) => {
     try {
+      console.log('Sending request to fetch profile with ID:', id); // Debug log
       const response = await axiosInstance.post(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profile/fetch/profile`,
         { id }
       );
-      // Ensure the response has the expected structure
+      console.log('Response received:', response.data); // Debug log
       return response.data || {};
     } catch (error: any) {
+      console.error('Error fetching profile:', error.response?.data || error.message); // Debug log
       if (error.response && error.response.data.message) {
         return rejectWithValue(error.response.data.message);
       } else {
