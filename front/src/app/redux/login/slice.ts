@@ -5,6 +5,7 @@ import { loginUser, loginBusiness } from './action';
 // --- User Slice ---
 
 interface UserState {
+  _id: string;
   userInfo: any;
   role: string;
   loading: boolean;
@@ -22,6 +23,7 @@ const initialUserState: UserState = {
   role: '',
   loading: false,
   error: null,
+  _id: ''
 };
 
 export const userSlice = createSlice({
