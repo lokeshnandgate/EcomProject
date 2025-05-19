@@ -51,6 +51,11 @@ const businessSchema = new mongoose.Schema({
     maxlength: 500,
     default: null,
   },
+  profileImage: {
+    type: String,
+    required: false,
+    default: null,
+  },
   accountCreatedAt: {
     type: Date,
     default: Date.now,

@@ -437,11 +437,11 @@ const ProfilePage = () => {
                     alt="Profile Picture"
                   />
                 )}
-                {isBusinessProfile && (
+                {/* {isBusinessProfile && (
                   <div className="absolute -bottom-2 -right-2 bg-purple-600 text-white p-2 rounded-full">
                     <FaStore className="text-lg" />
                   </div>
-                )}
+                )} */}
               </div>
               
               {isEditingProfile ? (

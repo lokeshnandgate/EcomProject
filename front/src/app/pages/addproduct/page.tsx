@@ -142,12 +142,32 @@ export default function AddProductPage() {
                                     onChange={(e) => {
                                         const file = e.target.files?.[0];
                                         if (file) {
+                                            if (file.size > 5 * 1024 * 1024) {
+                                                alert('File size exceeds 5MB. Please upload a smaller file.');
+                                                return;
+                                            }
                                             const reader = new FileReader();
-                                            reader.onloadend = () => {
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    image: reader.result as string,
-                                                }));
+                                            reader.onloadend = async () => {
+                                                const img = new Image();
+                                                img.src = reader.result as string;
+                                                img.onload = () => {
+                                                    const canvas = document.createElement('canvas');
+                                                    const ctx = canvas.getContext('2d');
+                                                    const maxWidth = 800; // Set max width for compression
+                                                    const scale = maxWidth / img.width;
+                                                    canvas.width = maxWidth;
+                                                    canvas.height = img.height * scale;
+                                                    ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                                    const compressedImage = canvas.toDataURL('image/jpeg', 0.7); // Compress to 70% quality
+                                                    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+                                                        alert('Unsupported file type. Please upload a JPEG, PNG, GIF, or WEBP image.');
+                                                        return;
+                                                    }
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        image: compressedImage,
+                                                    }));
+                                                };
                                             };
                                             reader.readAsDataURL(file);
                                         }

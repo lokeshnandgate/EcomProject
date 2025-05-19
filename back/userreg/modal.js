@@ -67,12 +67,11 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  previewImage: {
+ profileImage: {
     type: String,
     required: false,
-    match: /^(http|https):\/\/[^ "]+$/, // Must be a URL
     default: null,
-  },
+  }
 });
 
 
