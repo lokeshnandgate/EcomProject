@@ -1,29 +1,22 @@
-// src/app/redux/login/slice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { loginUser, loginBusiness } from './action';
+import { loginUser, loginBusiness } from './action'; // Import your async actions
 
 // --- User Slice ---
 
 interface UserState {
   _id: string;
-  userInfo: any;
+  userInfo: any | null; // Use 'null' to indicate no user
   role: string;
   loading: boolean;
   error: string | null;
 }
 
-// Check sessionStorage for user info
-const userFromSession =
-  typeof window !== 'undefined'
-    ? JSON.parse(sessionStorage.getItem('userInfo') || 'null')
-    : null;
-
 const initialUserState: UserState = {
-  userInfo: userFromSession,
+  _id: '',
+  userInfo: null,
   role: '',
   loading: false,
   error: null,
-  _id: ''
 };
 
 export const userSlice = createSlice({
@@ -31,24 +24,44 @@ export const userSlice = createSlice({
   initialState: initialUserState,
   reducers: {
     logout: (state) => {
+      state._id = '';
       state.userInfo = null;
-      sessionStorage.removeItem('userInfo');
+      state.role = ''; // Clear role as well
+      state.error = null; // Clear any previous error state
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('userInfo');
+        sessionStorage.removeItem('token'); // Clear token
+      }
     },
+    setUser: (state, action: PayloadAction<any>) => {
+      state.userInfo = action.payload;
+    }
   },
   extraReducers: (builder) => {
     builder
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
-        state.error = null;
+        state.error = null; // Clear previous errors
       })
       .addCase(loginUser.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.userInfo = action.payload;
-        sessionStorage.setItem('userInfo', JSON.stringify(action.payload));  // Save user info to sessionStorage
+        state.role = action.payload?.role || ''; // Set the role
+        state._id = action.payload?._id || '';
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('userInfo', JSON.stringify(action.payload));
+        }
       })
       .addCase(loginUser.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.error = action.payload;
+        state.userInfo = null; // Clear userInfo on error
+        state.role = '';
+        state._id = '';
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('userInfo'); // Clear on error
+          sessionStorage.removeItem('token');
+        }
       });
   },
 });
@@ -56,19 +69,13 @@ export const userSlice = createSlice({
 // --- Business Slice ---
 
 interface BusinessState {
-  businessInfo: any;
+  businessInfo: any | null; // Use null
   loading: boolean;
   error: string | null;
 }
 
-// Check sessionStorage for business info
-const businessFromSession =
-  typeof window !== 'undefined'
-    ? JSON.parse(sessionStorage.getItem('businessInfo') || 'null')
-    : null;
-
 const initialBusinessState: BusinessState = {
-  businessInfo: businessFromSession,
+  businessInfo: null,
   loading: false,
   error: null,
 };
@@ -79,8 +86,15 @@ export const businessSlice = createSlice({
   reducers: {
     logoutBusiness: (state) => {
       state.businessInfo = null;
-      sessionStorage.removeItem('businessInfo');
+      state.error = null;
+       if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('businessInfo');
+        sessionStorage.removeItem('token');
+      }
     },
+    setBusiness: (state, action: PayloadAction<any>) => {
+      state.businessInfo = action.payload;
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -91,18 +105,25 @@ export const businessSlice = createSlice({
       .addCase(loginBusiness.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.businessInfo = action.payload;
-        sessionStorage.setItem('businessInfo', JSON.stringify(action.payload));  // Save business info to sessionStorage
+         if (typeof window !== 'undefined') {
+          sessionStorage.setItem('businessInfo', JSON.stringify(action.payload));
+        }
       })
       .addCase(loginBusiness.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.error = action.payload;
+        state.businessInfo = null; // Clear state
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('businessInfo');
+          sessionStorage.removeItem('token');
+        }
       });
   },
 });
 
 // Export actions and reducers for both user and business slices
-export const { logout } = userSlice.actions;
-export const { logoutBusiness } = businessSlice.actions;
+export const { logout, setUser } = userSlice.actions;
+export const { logoutBusiness, setBusiness } = businessSlice.actions;
 
 export const userReducer = userSlice.reducer;
 export const businessReducer = businessSlice.reducer;

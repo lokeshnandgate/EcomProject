@@ -1,6 +1,7 @@
+// src/app/components/navbar/page.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 
@@ -9,32 +10,9 @@ const Navbar: React.FC = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
 
-  const handleAddToCart = () => {
-    router.push('/pages/addtocart');
-  };
-
-  const handleChat = () => {
-    router.push('/pages/chat');
-  };
-
-  const gotoprofile = () => {
-    // Ensure you're in a browser environment before accessing sessionStorage
-    const userInfo = typeof window !== 'undefined' ? sessionStorage.getItem('userInfo') : null;
-    const businessInfo = typeof window !== 'undefined' ? sessionStorage.getItem('businessInfo') : null;
-
-    // Determine the ID to navigate to the profile page
-    const id = userInfo ? JSON.parse(userInfo)._id : businessInfo ? JSON.parse(businessInfo)._id : '';
-    if (id) {
-      router.push(`/pages/profile/${id}`);
-    } else {
-      console.warn('No user or business info found to navigate to profile.');
-      // Optionally redirect to login or a default page if no info
-      // router.push('/pages/login');
-    }
-  };
-
-  const fetchCurrentUser = () => {
+  const fetchCurrentUser = useCallback(() => {
     if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
       const userInfo = sessionStorage.getItem('userInfo');
       const businessInfo = sessionStorage.getItem('businessInfo');
@@ -46,6 +24,38 @@ const Navbar: React.FC = () => {
       }
     }
     return null;
+  }, []);
+
+  useEffect(() => {
+    setCurrentUserProfile(fetchCurrentUser());
+
+    const handleProfileUpdate = () => {
+      console.log('Profile updated event received, re-fetching user profile...');
+      setCurrentUserProfile(fetchCurrentUser());
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, [fetchCurrentUser]);
+
+  const handleAddToCart = () => {
+    router.push('/pages/addtocart');
+  };
+
+  const handleChat = () => {
+    router.push('/pages/chat');
+  };
+
+  const gotoprofile = () => {
+    const id = currentUserProfile?._id;
+    if (id) {
+      router.push(`/pages/profile/${id}`);
+    } else {
+      console.warn('No user or business info found to navigate to profile.');
+    }
   };
 
   const handleLogout = async () => {
@@ -53,13 +63,12 @@ const Navbar: React.FC = () => {
     if (!confirmLogout) return;
 
     const token = sessionStorage.getItem('token');
-    // Ensure API_URL is correctly trimmed and defaults if not set
     const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || 'http://localhost:3001';
 
     if (!API_URL) {
       console.error('API base URL is not defined. Please check your environment variables.');
       alert('Logout failed: API configuration error.');
-      return;
+      return; // Stop execution if API_URL is critical and missing
     }
 
     if (token) {
@@ -67,7 +76,7 @@ const Navbar: React.FC = () => {
         const response = await axios.post(`${API_URL}/api/logout`, {}, {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`, // Send the token in the Authorization header
+            Authorization: `Bearer ${token}`,
           },
         });
 
@@ -76,30 +85,26 @@ const Navbar: React.FC = () => {
         }
       } catch (error) {
         if (axios.isAxiosError(error)) {
-          // Specific error handling for 404 if the endpoint is truly missing
           if (error.response?.status === 404) {
-            console.error('Logout endpoint not found (404). Ensure `/api/logout` is implemented and API URL is correct.');
+            console.error('Logout endpoint not found (404). Ensure `/api/logout` is implemented and API URL is correct on the server.');
             alert('Logout failed: Server endpoint not found. Please contact support.');
           } else {
-            // Log other HTTP errors
             console.error(`Logout error: ${error.response?.status} - ${error.response?.data?.message || error.message}`);
             alert(`Logout failed: ${error.response?.data?.message || 'Server error.'}`);
           }
         } else {
-          // Log unexpected errors
           console.error('Unexpected error during logout:', error);
           alert('Logout failed due to an unexpected error. Please try again.');
         }
       }
     } else {
-      console.warn('No token found in session storage. Proceeding with client-side logout.');
+      console.warn('No token found in session storage. Proceeding with client-side logout only.');
     }
 
-    // Always clear local storage and redirect, regardless of backend response
-    // This provides a better user experience even if the backend is down or errors.
     sessionStorage.removeItem('userInfo');
     sessionStorage.removeItem('businessInfo');
     sessionStorage.removeItem('token');
+    setCurrentUserProfile(null);
     router.push('/');
   };
 
@@ -151,8 +156,8 @@ const Navbar: React.FC = () => {
 
             <button onClick={gotoprofile} className="icon-button">
               <img
-              src={fetchCurrentUser()?.profilePic || '/default-profile.png'}
-              alt="Profile"
+                src={currentUserProfile?.profilePic || '/default-profile.png'}
+                alt="Profile"
               />
             </button>
 
@@ -175,7 +180,6 @@ const Navbar: React.FC = () => {
         </div>
       </nav>
 
-      {/* Search Results Display */}
       {searchResults.length > 0 && (
         <div className="search-results">
           {searchResults.map((product) => (
@@ -190,7 +194,6 @@ const Navbar: React.FC = () => {
         </div>
       )}
 
-      {/* Styles */}
       <style jsx>{`
         .navbar {
           display: flex;
@@ -218,9 +221,9 @@ const Navbar: React.FC = () => {
           gap: 10px;
         }
         .icon-button {
-          background: none; /* Remove default button background */
-          border: none; /* Remove default button border */
-          padding: 0; /* Remove default button padding */
+          background: none;
+          border: none;
+          padding: 0;
           cursor: pointer;
         }
         .icon-button img {
@@ -230,13 +233,13 @@ const Navbar: React.FC = () => {
           border: 1px solid #ccc;
           padding: 4px;
           background: white;
-          object-fit: cover; /* Ensure image covers the area nicely */
+          object-fit: cover;
         }
         .dropdown {
           position: relative;
         }
         .dropdown-button {
-          background-color: transparent; /* Changed to transparent for the '⋮' button */
+          background-color: transparent;
           color: inherit;
           border: none;
           padding: 0;
@@ -252,7 +255,7 @@ const Navbar: React.FC = () => {
           border-radius: 4px;
           box-shadow: 0 2px 5px rgba(0,0,0,0.1);
           z-index: 1000;
-          min-width: 120px; /* Give some minimum width */
+          min-width: 120px;
         }
         .dropdown-item {
           padding: 10px;
@@ -261,7 +264,7 @@ const Navbar: React.FC = () => {
           border: none;
           text-align: left;
           width: 100%;
-          display: block; /* Ensure it takes full width of the dropdown */
+          display: block;
         }
         .dropdown-item:hover {
           background-color: #f0f0f0;
@@ -273,10 +276,10 @@ const Navbar: React.FC = () => {
           border-top: 1px solid #ddd;
           max-height: 300px;
           overflow-y: auto;
-          position: absolute; /* Position below navbar if needed, or adjust flow */
+          position: absolute;
           width: 100%;
-          box-sizing: border-box; /* Include padding/border in element's total width/height */
-          z-index: 999; /* Below dropdown menu, but above page content */
+          box-sizing: border-box;
+          z-index: 999;
         }
 
         .search-result-item {
@@ -287,7 +290,7 @@ const Navbar: React.FC = () => {
           gap: 12px;
         }
         .search-result-item:last-child {
-          border-bottom: none; /* No border for the last item */
+          border-bottom: none;
         }
 
         .result-image {
