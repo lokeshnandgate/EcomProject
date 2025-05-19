@@ -1,18 +1,22 @@
-// Get individual user profile by ID
-const User = require('../userreg/modal');
-const Business = require('../businessreg/modal');
+// controllers/profileController.js
+const User = require('../userreg/modal'); // Assuming userreg/modal is the correct path for User model
+const Business = require('../businessreg/modal'); // Assuming businessreg/modal is the correct path for Business model
+
+// Helper function to validate image format (optional, but good practice)
+const isValidImageFormat = (imageData) => {
+  return imageData && imageData.startsWith('data:image/');
+};
 
 // Get individual user profile by ID
 const getUserProfile = async (req, res) => {
-  const { id } = req.body; 
+  const { id } = req.body; // Consider using req.params.id if ID is passed in the URL
 
   if (!id) {
     return res.status(400).json({ message: 'User ID is required.' });
   }
 
   try {
-    // Find user by ID
-    const user = await User.findById(id).select('-password -__v'); 
+    const user = await User.findById(id).select('-password -__v');
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
@@ -27,38 +31,33 @@ const getUserProfile = async (req, res) => {
   }
 };
 
-
 // Update user profile by ID
 const updateUserProfile = async (req, res) => {
-  const { id } = req.body; 
-  const { username, email, contactNumber, locationUrl, address, about } = req.body; // Get updated data from request body
-
-  if (!id) {
-    return res.status(400).json({ message: 'User ID is required.' });
-  }
-
   try {
-    // Find user by ID
-    const user = await User.findById(id);
+    const { id, profilePic, ...updateData } = req.body; // Get ID and other updated data from request body
 
-    if (!user) {
+    if (!id) {
+      return res.status(400).json({ message: 'User ID is required.' });
+    }
+
+    // Validate profilePic if provided
+    if (profilePic && !isValidImageFormat(profilePic)) {
+      return res.status(400).json({ message: 'Invalid image format. Profile picture must be a base64 encoded image.' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { ...updateData, profilePic }, // Apply all updates including profilePic
+      { new: true, runValidators: true } // Return the updated document and run schema validators
+    ).select('-password -__v'); // Exclude sensitive fields from the response
+
+    if (!updatedUser) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    // Update the user profile with new values
-    user.username = username || user.username;
-    user.email = email || user.email;
-    user.contactNumber = contactNumber || user.contactNumber;
-    user.locationUrl = locationUrl || user.locationUrl;
-    user.address = address || user.address;
-    user.about = about || user.about;
-
-    // Save the updated user
-    await user.save();
-
     res.status(200).json({
       message: 'User profile updated successfully.',
-      user,
+      user: updatedUser,
     });
   } catch (error) {
     console.error('Error updating user profile:', error);
@@ -66,19 +65,16 @@ const updateUserProfile = async (req, res) => {
   }
 };
 
-
 // Fetch the data for business user by ID
-
 const getBusinessUserProfile = async (req, res) => {
-  const { id } = req.body; // Get business user ID from request body
+  const { id } = req.body; // Consider using req.params.id if ID is passed in the URL
 
   if (!id) {
     return res.status(400).json({ message: 'Business User ID is required.' });
   }
 
   try {
-    // Find business user by ID
-    const businessUser = await Business.findById(id).select('-password -__v'); // Exclude password and __v from the result
+    const businessUser = await Business.findById(id).select('-password -__v');
     if (!businessUser) {
       return res.status(404).json({ message: 'Business User not found.' });
     }
@@ -93,73 +89,77 @@ const getBusinessUserProfile = async (req, res) => {
   }
 };
 
-
-
 const updateBusinessProfile = async (req, res) => {
   try {
-    const { id, username, email, contactNumber, businessType, locationUrl, about, address } = req.body;
+    const { id, profilePic, ...updateData } = req.body;
 
-    // Fetch current business
-    const existingBusiness = await Business.findById(id);
-
-    if (!existingBusiness) {
-      return res.status(404).json({ message: 'Business not found' });
+    if (!id) {
+      return res.status(400).json({ message: 'Business ID is required.' });
     }
 
-    // Check if new username exists and belongs to a different user
-    if (username && username !== existingBusiness.username) {
-      const usernameExists = await Business.findOne({ username });
-      if (usernameExists) {
-        return res.status(400).json({ message: 'Username already taken' });
+    // Validate profilePic if provided
+    if (profilePic && !isValidImageFormat(profilePic)) {
+      return res.status(400).json({ message: 'Invalid image format. Profile picture must be a base64 encoded image.' });
+    }
+
+    // Check if new username exists and belongs to a different user (only if username is part of updateData)
+    if (updateData.username) {
+      const existingBusiness = await Business.findById(id);
+      if (existingBusiness && updateData.username !== existingBusiness.username) {
+        const usernameExists = await Business.findOne({ username: updateData.username });
+        if (usernameExists) {
+          return res.status(400).json({ message: 'Username already taken' });
+        }
       }
     }
 
-    // Update fields
-    existingBusiness.username = username || existingBusiness.username;
-    existingBusiness.email = email || existingBusiness.email;
-    existingBusiness.contactNumber = contactNumber || existingBusiness.contactNumber;
-    existingBusiness.businessType = businessType || existingBusiness.businessType;
-    existingBusiness.locationUrl = locationUrl || existingBusiness.locationUrl;
-    existingBusiness.about = about || existingBusiness.about;
-    existingBusiness.address = address || existingBusiness.address;
+    const updatedBusiness = await Business.findByIdAndUpdate(
+      id,
+      { ...updateData, profilePic },
+      { new: true, runValidators: true }
+    ).select('-password -__v');
 
-    await existingBusiness.save();
+    if (!updatedBusiness) {
+      return res.status(404).json({ message: 'Business not found' });
+    }
 
-    res.status(200).json({ message: 'Profile updated successfully', business: existingBusiness });
+    res.status(200).json({ message: 'Profile updated successfully', business: updatedBusiness });
   } catch (error) {
     console.error('Error updating business profile:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-
+// Get a combined user or business profile by ID
 const getProfile = async (req, res) => {
-  const { id } = req.body; // Get user or business user ID from request body
+  const { id } = req.body; // Consider using req.params.id if ID is passed in the URL
 
   if (!id) {
     return res.status(400).json({ message: 'ID is required.' });
   }
 
   try {
-    // Find user by ID
+    // Attempt to find as a regular user
     const user = await User.findById(id).select('-password -__v');
     if (user) {
       return res.status(200).json({
         message: 'User profile fetched successfully.',
-        user,
+        type: 'user',
+        profile: user,
       });
     }
 
-    // If not a user, find business user by ID
+    // If not a regular user, attempt to find as a business user
     const businessUser = await Business.findById(id).select('-password -__v');
     if (businessUser) {
       return res.status(200).json({
         message: 'Business User profile fetched successfully.',
-        businessUser,
+        type: 'business',
+        profile: businessUser,
       });
     }
 
-    // If neither user nor business user is found
+    // If neither is found
     return res.status(404).json({ message: 'Profile not found.' });
   } catch (error) {
     console.error('Error fetching profile:', error);
@@ -167,14 +167,10 @@ const getProfile = async (req, res) => {
   }
 };
 
-
-
-
-
 module.exports = {
   updateUserProfile,
   getUserProfile,
   getBusinessUserProfile,
   updateBusinessProfile,
-  getProfile
+  getProfile,
 };

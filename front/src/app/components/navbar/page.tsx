@@ -17,60 +17,86 @@ const Navbar: React.FC = () => {
   const handleChat = () => {
     router.push('/pages/chat');
   };
-const gotoprofile = () => {
-  const userInfo = typeof window !== 'undefined' ? sessionStorage.getItem('userInfo') : null;
-  const businessInfo = typeof window !== 'undefined' ? sessionStorage.getItem('businessInfo') : null;
 
-  router.push(`/pages/profile/${userInfo ? JSON.parse(userInfo)._id : businessInfo ? JSON.parse(businessInfo)._id : ''}`);
-}
+  const gotoprofile = () => {
+    // Ensure you're in a browser environment before accessing sessionStorage
+    const userInfo = typeof window !== 'undefined' ? sessionStorage.getItem('userInfo') : null;
+    const businessInfo = typeof window !== 'undefined' ? sessionStorage.getItem('businessInfo') : null;
 
-const fetchCurrentUser = () => {
-  if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
-    const userInfo = sessionStorage.getItem('userInfo');
-    const businessInfo = sessionStorage.getItem('businessInfo');
-
-    if (userInfo) {
-      return JSON.parse(userInfo);
-    } else if (businessInfo) {
-      return JSON.parse(businessInfo);
+    // Determine the ID to navigate to the profile page
+    const id = userInfo ? JSON.parse(userInfo)._id : businessInfo ? JSON.parse(businessInfo)._id : '';
+    if (id) {
+      router.push(`/pages/profile/${id}`);
+    } else {
+      console.warn('No user or business info found to navigate to profile.');
+      // Optionally redirect to login or a default page if no info
+      // router.push('/pages/login');
     }
-  }
-  return null;
-};
+  };
+
+  const fetchCurrentUser = () => {
+    if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
+      const userInfo = sessionStorage.getItem('userInfo');
+      const businessInfo = sessionStorage.getItem('businessInfo');
+
+      if (userInfo) {
+        return JSON.parse(userInfo);
+      } else if (businessInfo) {
+        return JSON.parse(businessInfo);
+      }
+    }
+    return null;
+  };
+
   const handleLogout = async () => {
     const confirmLogout = confirm('Do you want to logout?');
     if (!confirmLogout) return;
 
     const token = sessionStorage.getItem('token');
+    // Ensure API_URL is correctly trimmed and defaults if not set
     const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || 'http://localhost:3001';
+
+    if (!API_URL) {
+      console.error('API base URL is not defined. Please check your environment variables.');
+      alert('Logout failed: API configuration error.');
+      return;
+    }
 
     if (token) {
       try {
         const response = await axios.post(`${API_URL}/api/logout`, {}, {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${token}`, // Send the token in the Authorization header
           },
         });
 
         if (response.status === 200) {
-          console.log('Logout successful');
-        } else {
-          console.warn('Unexpected response during logout:', response);
+          console.log('Logout successful (backend confirmed)');
         }
       } catch (error) {
         if (axios.isAxiosError(error)) {
+          // Specific error handling for 404 if the endpoint is truly missing
           if (error.response?.status === 404) {
-            console.error('Logout endpoint not found (404). Please check the API URL or ensure the endpoint is implemented on the server.');
+            console.error('Logout endpoint not found (404). Ensure `/api/logout` is implemented and API URL is correct.');
+            alert('Logout failed: Server endpoint not found. Please contact support.');
           } else {
+            // Log other HTTP errors
             console.error(`Logout error: ${error.response?.status} - ${error.response?.data?.message || error.message}`);
+            alert(`Logout failed: ${error.response?.data?.message || 'Server error.'}`);
           }
         } else {
+          // Log unexpected errors
           console.error('Unexpected error during logout:', error);
+          alert('Logout failed due to an unexpected error. Please try again.');
         }
       }
+    } else {
+      console.warn('No token found in session storage. Proceeding with client-side logout.');
     }
 
+    // Always clear local storage and redirect, regardless of backend response
+    // This provides a better user experience even if the backend is down or errors.
     sessionStorage.removeItem('userInfo');
     sessionStorage.removeItem('businessInfo');
     sessionStorage.removeItem('token');
@@ -124,42 +150,47 @@ const fetchCurrentUser = () => {
             </button>
 
             <button onClick={gotoprofile} className="icon-button">
-              <img src={fetchCurrentUser()?.previewImage || '/default-profile.png'} alt="Profile" />
+              <img
+              src={fetchCurrentUser()?.profilePic || '/default-profile.png'}
+              alt="Profile"
+              />
             </button>
 
             <div className="dropdown">
               <button onClick={toggleDropdown} className="dropdown-button" style={{ backgroundColor: 'transparent', color: 'inherit', border: 'none', padding: 0, fontSize: '24px', cursor: 'pointer' }}>
-              ⋮
+                ⋮
               </button>
               {dropdownOpen && (
-              <div className="dropdown-menu">
-                <button onClick={handleAddToCart} className="dropdown-item">
-                Add to Cart
-                </button>
-                <button onClick={handleLogout} className="dropdown-item">
-                Logout
-                </button>
-              </div>
+                <div className="dropdown-menu">
+                  <button onClick={handleAddToCart} className="dropdown-item">
+                    Add to Cart
+                  </button>
+                  <button onClick={handleLogout} className="dropdown-item">
+                    Logout
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </div>
-            </nav>
+      </nav>
 
-            {searchResults.length > 0 && (
+      {/* Search Results Display */}
+      {searchResults.length > 0 && (
         <div className="search-results">
           {searchResults.map((product) => (
             <div key={product._id} className="search-result-item">
               <img src={product.image} alt={product.title} className="result-image" />
               <div>
-          <h4>{product.title}</h4>
-          <p>₹{product.price}</p>
+                <h4>{product.title}</h4>
+                <p>₹{product.price}</p>
               </div>
             </div>
           ))}
         </div>
-            )}
+      )}
 
+      {/* Styles */}
       <style jsx>{`
         .navbar {
           display: flex;
@@ -186,6 +217,12 @@ const fetchCurrentUser = () => {
           align-items: center;
           gap: 10px;
         }
+        .icon-button {
+          background: none; /* Remove default button background */
+          border: none; /* Remove default button border */
+          padding: 0; /* Remove default button padding */
+          cursor: pointer;
+        }
         .icon-button img {
           width: 32px;
           height: 32px;
@@ -193,17 +230,17 @@ const fetchCurrentUser = () => {
           border: 1px solid #ccc;
           padding: 4px;
           background: white;
-          cursor: pointer;
+          object-fit: cover; /* Ensure image covers the area nicely */
         }
         .dropdown {
           position: relative;
         }
         .dropdown-button {
-          background-color: #007bff;
-          color: white;
+          background-color: transparent; /* Changed to transparent for the '⋮' button */
+          color: inherit;
           border: none;
-          padding: 6px 12px;
-          border-radius: 4px;
+          padding: 0;
+          font-size: 24px;
           cursor: pointer;
         }
         .dropdown-menu {
@@ -215,6 +252,7 @@ const fetchCurrentUser = () => {
           border-radius: 4px;
           box-shadow: 0 2px 5px rgba(0,0,0,0.1);
           z-index: 1000;
+          min-width: 120px; /* Give some minimum width */
         }
         .dropdown-item {
           padding: 10px;
@@ -223,6 +261,7 @@ const fetchCurrentUser = () => {
           border: none;
           text-align: left;
           width: 100%;
+          display: block; /* Ensure it takes full width of the dropdown */
         }
         .dropdown-item:hover {
           background-color: #f0f0f0;
@@ -234,6 +273,10 @@ const fetchCurrentUser = () => {
           border-top: 1px solid #ddd;
           max-height: 300px;
           overflow-y: auto;
+          position: absolute; /* Position below navbar if needed, or adjust flow */
+          width: 100%;
+          box-sizing: border-box; /* Include padding/border in element's total width/height */
+          z-index: 999; /* Below dropdown menu, but above page content */
         }
 
         .search-result-item {
@@ -242,6 +285,9 @@ const fetchCurrentUser = () => {
           padding: 10px 0;
           border-bottom: 1px solid #eee;
           gap: 12px;
+        }
+        .search-result-item:last-child {
+          border-bottom: none; /* No border for the last item */
         }
 
         .result-image {

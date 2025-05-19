@@ -67,11 +67,19 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
- profileImage: {
-    type: String,
-    required: false,
-    default: null,
+ // In both User and Business schemas, update the profile image field:
+profilePic: {
+  type: String,
+  required: false,
+  default: null,
+  validate: {
+    validator: function(v) {
+      if (!v) return true;
+      return v.startsWith('data:image/') || v.startsWith('http');
+    },
+    message: props => `${props.value} is not a valid image URL or base64 string`
   }
+}
 });
 
 

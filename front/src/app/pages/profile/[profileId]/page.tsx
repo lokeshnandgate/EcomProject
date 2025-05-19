@@ -6,10 +6,10 @@ import { fetchUserProfile, fetchBusinessProfile, updateUserProfile, updateBusine
 import { fetchProductsByUserId, deleteProductById, updateProductById } from '../../../redux/products/action';
 import Image from 'next/image';
 import Link from 'next/link';
-import { 
-  FiEdit, FiTrash2, FiHeart, FiSearch, FiX, FiCheck, 
-  FiUpload, FiUser, FiHome, FiMail, FiPhone, FiMapPin, 
-  FiGlobe, FiBriefcase, FiInfo, FiShoppingBag, FiPlus 
+import { 
+  FiEdit, FiTrash2, FiHeart, FiSearch, FiX, FiCheck, 
+  FiUpload, FiUser, FiHome, FiMail, FiPhone, FiMapPin, 
+  FiGlobe, FiBriefcase, FiInfo, FiShoppingBag, FiPlus 
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaStore, FaBoxOpen, FaRupeeSign } from 'react-icons/fa';
@@ -54,7 +54,7 @@ const ProfilePage = () => {
   const { profileId } = useParams() as { profileId: string };
   const dispatch = useAppDispatch();
   const router = useRouter();
-  
+   
   const { user, business, loading, error } = useAppSelector((state) => state.profile);
   const { list: products, loading: productsLoading, error: productsError } = useAppSelector(
     (state) => state.products
@@ -92,7 +92,7 @@ const ProfilePage = () => {
         // Check if current user is the profile owner
         const storedBusinessUser = sessionStorage.getItem('businessInfo');
         const storedUser = sessionStorage.getItem('userInfo');
-        
+         
         let currentUserType: 'user' | 'business' | null = null;
         let currentIsOwner = false;
 
@@ -296,7 +296,7 @@ const ProfilePage = () => {
           <div className="text-red-500 text-5xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Profile</h2>
           <p className="text-gray-600 mb-6">{error}</p>
-          <button 
+          <button 
             onClick={() => router.push('/dashboard')}
             className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
           >
@@ -314,7 +314,7 @@ const ProfilePage = () => {
           <div className="text-red-500 text-5xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Products</h2>
           <p className="text-gray-600 mb-6">{productsError}</p>
-          <button 
+          <button 
             onClick={() => window.location.reload()}
             className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
           >
@@ -351,7 +351,7 @@ const ProfilePage = () => {
         {/* Header with Back Button */}
         <div className="flex justify-between items-center mb-8">
           <Link href="/dashboard">
-            <motion.button 
+            <motion.button 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-sm hover:shadow-md transition"
@@ -362,7 +362,7 @@ const ProfilePage = () => {
               <span className="font-medium text-gray-700">Dashboard</span>
             </motion.button>
           </Link>
-          
+           
           {isOwner && !isEditingProfile && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -399,7 +399,7 @@ const ProfilePage = () => {
         </div>
 
         {/* Profile Card */}
-        <motion.div 
+        <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -443,7 +443,7 @@ const ProfilePage = () => {
                   </div>
                 )} */}
               </div>
-              
+               
               {isEditingProfile ? (
                 <input
                   name="username"
@@ -454,7 +454,7 @@ const ProfilePage = () => {
               ) : (
                 <h2 className="text-2xl font-bold mt-4 text-gray-800">{profile.username}</h2>
               )}
-              
+               
               <div className="mt-4 w-full space-y-2">
                 {isEditingProfile ? (
                   <>
@@ -526,7 +526,7 @@ const ProfilePage = () => {
                         />
                       ) : (
                         <p className="mt-1 text-lg font-medium text-gray-800 flex items-center gap-2">
-                          <FiBriefcase className="text-purple-500" /> 
+                          <FiBriefcase className="text-purple-500" /> 
                           {profile.businessType || 'Not specified'}
                         </p>
                       )}
@@ -545,7 +545,7 @@ const ProfilePage = () => {
                       />
                     ) : profile.description ? (
                       <p className="mt-1 text-gray-700 flex items-start gap-2">
-                        <FiInfo className="text-purple-500 mt-1 flex-shrink-0" /> 
+                        <FiInfo className="text-purple-500 mt-1 flex-shrink-0" /> 
                         {profile.description}
                       </p>
                     ) : (
@@ -565,7 +565,7 @@ const ProfilePage = () => {
                       />
                     ) : profile.address ? (
                       <p className="mt-1 text-gray-700 flex items-start gap-2">
-                        <FiMapPin className="text-purple-500 mt-1 flex-shrink-0" /> 
+                        <FiMapPin className="text-purple-500 mt-1 flex-shrink-0" /> 
                         {profile.address}
                       </p>
                     ) : (
@@ -584,13 +584,13 @@ const ProfilePage = () => {
                         className="mt-1 text-blue-600 w-full bg-transparent border-b border-gray-300 focus:border-purple-500 focus:outline-none"
                       />
                     ) : profile.locationUrl ? (
-                      <a 
-                        href={profile.locationUrl} 
-                        target="_blank" 
+                      <a 
+                        href={profile.locationUrl} 
+                        target="_blank" 
                         rel="noopener noreferrer"
                         className="mt-1 text-blue-600 hover:underline flex items-center gap-2"
                       >
-                        <FiGlobe className="text-purple-500" /> 
+                        <FiGlobe className="text-purple-500" /> 
                         {profile.locationUrl}
                       </a>
                     ) : (
@@ -632,8 +632,8 @@ const ProfilePage = () => {
                   ) : (
                     <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                       {products.map((product) => (
-                        <motion.div 
-                          key={product._id} 
+                        <motion.div 
+                          key={product._id} 
                           className={`bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition ${isDeleting === product._id ? 'opacity-0 scale-90 transition-all duration-300' : ''}`}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -644,8 +644,8 @@ const ProfilePage = () => {
                             {/* Product Image */}
                             <div className="relative h-48 rounded-lg overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 mb-4">
                               {product.image ? (
-                                <Image 
-                                  src={product.image} 
+                                <Image 
+                                  src={product.image} 
                                   layout="fill"
                                   objectFit="cover"
                                   alt={product.title}
@@ -706,7 +706,7 @@ const ProfilePage = () => {
             </div>
           </div>
         </motion.div>
-       
+        
         {/* Edit Product Modal */}
         <AnimatePresence>
           {showModal && (
@@ -737,8 +737,9 @@ const ProfilePage = () => {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                      <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                       <input
+                        id="title"
                         name="title"
                         value={formData.title}
                         onChange={handleFormChange}
@@ -749,49 +750,48 @@ const ProfilePage = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                       <textarea
+                        id="description"
                         name="description"
                         value={formData.description}
                         onChange={handleFormChange}
                         placeholder="Product description"
                         rows={3}
+                        required
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                          <FaRupeeSign />
-                        </span>
-                        <input
-                          name="price"
-                          type="number"
-                          value={formData.price}
-                          onChange={handleFormChange}
-                          placeholder="0.00"
-                          step="0.01"
-                          min="0"
-                          required
-                          className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
-                        />
-                      </div>
+                      <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
+                      <input
+                        id="price"
+                        name="price"
+                        type="number"
+                        value={formData.price}
+                        onChange={handleFormChange}
+                        placeholder="e.g., 99.99"
+                        step="0.01"
+                        required
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+                      />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                       <select
+                        id="category"
                         name="category"
                         value={formData.category}
                         onChange={handleFormChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+                        required
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition bg-white"
                       >
                         <option value="">Select a category</option>
-                        {Object.entries(categoryLabels).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
+                        {Object.keys(categoryLabels).map((key) => (
+                          <option key={key} value={key}>
+                            {categoryLabels[key]}
                           </option>
                         ))}
                       </select>
@@ -801,29 +801,22 @@ const ProfilePage = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
                       <div className="flex items-center gap-4">
                         {formData.image && (
-                          <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200">
-                            <img
-                              src={formData.image}
-                              alt="Preview"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+                          <Image
+                            src={formData.image}
+                            width={80}
+                            height={80}
+                            className="rounded-lg object-cover"
+                            alt="Product preview"
+                          />
                         )}
-                        <label className="flex-1">
-                          <div className="cursor-pointer border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-purple-500 transition-colors group">
-                            <div className="flex flex-col items-center">
-                              <FiUpload className="text-gray-400 mb-1 group-hover:text-purple-500 transition" />
-                              <span className="text-sm text-gray-500 group-hover:text-purple-500 transition">
-                                {formData.image ? 'Change image' : 'Upload image'}
-                              </span>
-                            </div>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleProductImageUpload}
-                              className="hidden"
-                            />
-                          </div>
+                        <label className="flex-1 flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
+                          <FiUpload className="mr-2" /> Upload Image
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleProductImageUpload}
+                            className="hidden"
+                          />
                         </label>
                       </div>
                     </div>
@@ -837,29 +830,17 @@ const ProfilePage = () => {
                         onChange={handleFormChange}
                         className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                       />
-                      <label htmlFor="inStock" className="ml-2 block text-sm text-gray-700">
+                      <label htmlFor="inStock" className="ml-2 block text-sm text-gray-900">
                         In Stock
                       </label>
                     </div>
-                  </div>
 
-                  <div className="mt-6 flex justify-end gap-3">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setShowModal(false)}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                    <button
                       onClick={handleProductSubmit}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                      className="w-full py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition transform hover:scale-105"
                     >
-                      <FiCheck /> Save Changes
-                    </motion.button>
+                      Save Product Changes
+                    </button>
                   </div>
                 </div>
               </motion.div>
