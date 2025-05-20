@@ -1,86 +1,104 @@
-import { createAsyncThunk } from '@reduxjs/toolkit';
 import axiosInstance from '../../../utils/auth';
+import { setLoading, setError, setRooms, setCurrentRoom, setMessages, addMessage, updateMessageStatus, addTypingUser, removeTypingUser, addNotification } from './slice';
 
-// Create a new chat room
-export const createChatRoom = createAsyncThunk(
-  'chat/createChatRoom',
-  async (participant2: { participant2Id: string, participant2Type: 'User' | 'businessUser' }) => {
-    try {
-      const response = await axiosInstance.post('/chat/addNewChatEntry', participant2);
-      return response.data;  // Data returned here will be the action.payload
-    } catch (error) {
-      console.error('Error creating chat room:', error);
-      throw error;  // Thrown errors will be caught in the rejected case
-    }
+// Get user's chat rooms
+export const fetchChatRooms = () => async (dispatch: any) => {
+  try {
+    dispatch(setLoading(true));
+    const response = await axiosInstance.get('/chat/rooms');
+    dispatch(setRooms(response.data));
+    dispatch(setLoading(false));
+  } catch (error: any) {
+    dispatch(setError(error.response?.data?.message || error.message));
+    dispatch(setLoading(false));
   }
-);
+};
 
-// Add a new message to a chat room
-export const addNewMessage = createAsyncThunk(
-  'chat/addNewMessage',
-  async (messageData: { roomId: string, message: string }) => {
-    try {
-      const response = await axiosInstance.post('/chat/addNewMessage', messageData);
-      return response.data;
-    } catch (error) {
-      console.error('Error adding message:', error);
-      throw error;
-    }
+// Create or get chat room
+export const createOrGetChatRoom = (participantId: string) => async (dispatch: any) => {
+  try {
+    dispatch(setLoading(true));
+    const response = await axiosInstance.post('/chat/rooms', { participantId });
+    dispatch(setCurrentRoom(response.data));
+    dispatch(setLoading(false));
+    return response.data;
+  } catch (error: any) {
+    dispatch(setError(error.response?.data?.message || error.message));
+    dispatch(setLoading(false));
+    throw error;
   }
-);
+};
 
-// Get all chat rooms for the current user
-export const getChatRooms = createAsyncThunk(
-  'chat/getChatRooms',
-  async () => {
-    try {
-      const response = await axiosInstance.post('/chat/getRooms');
-      return response.data.rooms; // This will be returned as payload
-    } catch (error) {
-      console.error('Error fetching chat rooms:', error);
-      throw error;
-    }
+// Get messages for a chat room
+export const fetchMessages = (chatRoomId: string) => async (dispatch: any) => {
+  try {
+    dispatch(setLoading(true));
+    const response = await axiosInstance.get(`/chat/messages/${chatRoomId}`);
+    dispatch(setMessages(response.data));
+    dispatch(setLoading(false));
+  } catch (error: any) {
+    dispatch(setError(error.response?.data?.message || error.message));
+    dispatch(setLoading(false));
   }
-);
+};
 
-// Find a chat room between two specific users
-export const findRoomOf2Users = createAsyncThunk(
-  'chat/findRoomOf2Users',
-  async (user2: { user2Id: string, user2Type: 'User' | 'businessUser' }) => {
-    try {
-      const response = await axiosInstance.post('/chat/findRoomOf2Users', user2);
-      return response.data.room;
-    } catch (error) {
-      console.error('Error finding chat room:', error);
-      throw error;
-    }
+// Send message
+export const sendMessage = (chatRoomId: string, content: string) => async (dispatch: any) => {
+  try {
+    const response = await axiosInstance.post('/chat/messages', { chatRoomId, content });
+    dispatch(addMessage(response.data));
+    return response.data;
+  } catch (error: any) {
+    dispatch(setError(error.response?.data?.message || error.message));
+    throw error;
   }
-);
+};
 
-// Mark messages as read
-export const markMessagesAsRead = createAsyncThunk(
-  'chat/markMessagesAsRead',
-  async (data: { roomId: string, messageIds: string[] }) => {
-    try {
-      const response = await axiosInstance.post('/chat/markRead', data);
-      return response.data;
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-      throw error;
-    }
+// Update message status
+export const markMessageAsRead = (messageId: string) => async (dispatch: any) => {
+  try {
+    await axiosInstance.put(`/chat/messages/${messageId}/status`);
+    dispatch(updateMessageStatus({ messageId, status: 'read' }));
+  } catch (error: any) {
+    dispatch(setError(error.response?.data?.message || error.message));
   }
-);
+};
 
-// Get count of unread messages
-export const getUnreadMessagesCount = createAsyncThunk(
-  'chat/getUnreadMessagesCount',
-  async () => {
-    try {
-      const response = await axiosInstance.post('/chat/unreadMessagesCount');
-      return response.data.unreadCount;
-    } catch (error) {
-      console.error('Error getting unread messages count:', error);
-      throw error;
-    }
+// Update typing status
+export const setTypingStatus = (chatRoomId: string, isTyping: boolean) => async (dispatch: any) => {
+  try {
+    await axiosInstance.put('/chat/typing', { chatRoomId, isTyping });
+  } catch (error: any) {
+    dispatch(setError(error.response?.data?.message || error.message));
   }
-);
+};
+
+// Update last seen
+export const updateLastSeenTime = (chatRoomId: string) => async (dispatch: any) => {
+  try {
+    await axiosInstance.put('/chat/last-seen', { chatRoomId });
+  } catch (error: any) {
+    dispatch(setError(error.response?.data?.message || error.message));
+  }
+};
+
+// Socket actions
+export const handleNewMessage = (message: any) => (dispatch: any) => {
+  dispatch(addMessage(message));
+};
+
+export const handleTypingStart = (userId: string) => (dispatch: any) => {
+  dispatch(addTypingUser(userId));
+};
+
+export const handleTypingStop = (userId: string) => (dispatch: any) => {
+  dispatch(removeTypingUser(userId));
+};
+
+export const handleMessageRead = (messageId: string) => (dispatch: any) => {
+  dispatch(updateMessageStatus({ messageId, status: 'read' }));
+};
+
+export const handleNewNotification = (notification: any) => (dispatch: any) => {
+  dispatch(addNotification(notification));
+};

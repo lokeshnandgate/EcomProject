@@ -1,207 +1,247 @@
-const Chat = require('./modal');
+const { Message, ChatRoom } = require('./modal');
 const User = require('../userreg/modal');
-const businessUser = require('../businessreg/modal');
+const Business = require('../businessreg/modal');
 
-const create = async (req, res) => {
-  const { participant2Id, participant2Type } = req.body;
-
-  const participant1Id = req.user.id;
-  const participant1Type = req.user.userType;
-  console.log('Participant 1:', participant1Id, participant1Type);
-  console.log('Participant 2:', participant2Id, participant2Type);
-  
-
+// Create or get existing chat room
+exports.createOrGetChatRoom = async (req, res) => {
   try {
-    const participant1Model = participant1Type === 'User' ? User : businessUser;
-    const participant2Model = participant2Type === 'User' ? User : businessUser;
+    const { participantId } = req.body;
+    const currentUser = req.user;
 
-    const [participant1, participant2] = await Promise.all([
-      participant1Model.findById(participant1Id),
-      participant2Model.findById(participant2Id)
-    ]);
-
-    if (!participant1 || !participant2) {
-      return res.status(404).json({ message: 'One or both participants not found' });
+    // Check if participant exists
+    let participant = await User.findById(participantId);
+    let participantModel = 'User';
+    
+    if (!participant) {
+      participant = await Business.findById(participantId);
+      participantModel = 'Business';
+      if (!participant) {
+        return res.status(404).json({ message: 'Participant not found' });
+      }
     }
 
-    const existingRoom = await Chat.findOne({
-      $or: [
-        { 
-          participant1Id,
-          participant1Type,
-          participant2Id,
-          participant2Type
-        },
-        { 
-          participant1Id: participant2Id,
-          participant1Type: participant2Type,
-          participant2Id: participant1Id,
-          participant2Type: participant1Type
-        }
-      ]
+    // Check if chat room already exists
+    const existingRoom = await ChatRoom.findOne({
+      participants: {
+        $all: [
+          { $elemMatch: { participantId: currentUser._id, participantModel: currentUser.userType === 'User' ? 'User' : 'Business' } },
+          { $elemMatch: { participantId: participant._id, participantModel: participantModel } }
+        ]
+      }
     });
 
     if (existingRoom) {
-      return res.status(200).json({ 
-        message: 'Chat room already exists', 
-        room: existingRoom 
-      });
+      return res.status(200).json(existingRoom);
     }
 
-    const newRoom = new Chat({
-      participant1Id,
-      participant1Type,
-      participant2Id,
-      participant2Type,
-      messages: []
-    });
-
-    await newRoom.save();
-    res.status(201).json({ message: 'Chat room created', room: newRoom });
-  } catch (error) {
-    console.error('Error creating chat room:', error);
-    res.status(500).json({ message: 'Failed to create chat room' });
-  }
-};
-
-const addNewMessage = async (req, res) => {
-  const { roomId, message } = req.body;
-  const senderId = req.user.id;
-  const senderType = req.user.userType;
-
-  try {
-    const room = await Chat.findById(roomId);
-    if (!room) {
-      return res.status(404).json({ message: 'Chat room not found' });
-    }
-
-    const newMessage = {
-      senderId,
-      senderType,
-      message,
-      timestamp: new Date(),
-      read: false
-    };
-
-    room.messages.push(newMessage);
-    await room.save();
-    res.status(201).json({ message: 'Message added', room });
-  } catch (error) {
-    console.error('Error adding message:', error);
-    res.status(500).json({ message: 'Failed to add message' });
-  }
-};
-
-const getRooms = async (req, res) => {
-  const userId = req.user.id;
-  const userType = req.user.userType;
-
-  try {
-    const rooms = await Chat.find({
-      $or: [
-        { participant1Id: userId, participant1Type: userType },
-        { participant2Id: userId, participant2Type: userType }
-      ]
-    }).sort({ updatedAt: -1 });
-
-    res.status(200).json({ rooms });
-  } catch (error) {
-    console.error('Error fetching rooms:', error);
-    res.status(500).json({ message: 'Failed to get rooms' });
-  }
-};
-
-const findRoomOf2Users = async (req, res) => {
-  const { user2Id, user2Type } = req.body;
-  const user1Id = req.user.id;
-  const user1Type = req.user.userType;
-
-  try {
-    const room = await Chat.findOne({
-      $or: [
-        { 
-          participant1Id: user1Id,
-          participant1Type: user1Type,
-          participant2Id: user2Id,
-          participant2Type: user2Type
+    // Create new chat room
+    const newRoom = new ChatRoom({
+      participants: [
+        {
+          participantId: currentUser._id,
+          participantModel: currentUser.userType === 'User' ? 'User' : 'Business'
         },
-        { 
-          participant1Id: user2Id,
-          participant1Type: user2Type,
-          participant2Id: user1Id,
-          participant2Type: user1Type
+        {
+          participantId: participant._id,
+          participantModel: participantModel
         }
       ]
     });
 
-    if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
-    }
-
-    res.status(200).json({ room });
+    await newRoom.save();
+    res.status(201).json(newRoom);
   } catch (error) {
-    console.error('Error finding room:', error);
-    res.status(500).json({ message: 'Failed to find room' });
+    res.status(500).json({ message: error.message });
   }
 };
 
-const markMessageAsRead = async (req, res) => {
-  const { roomId, messageIds } = req.body;
-
+// Send message
+exports.sendMessage = async (req, res) => {
   try {
-    const room = await Chat.findById(roomId);
-    if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
+    const { chatRoomId, content } = req.body;
+    const currentUser = req.user;
+
+    // Check if chat room exists
+    const chatRoom = await ChatRoom.findById(chatRoomId);
+    if (!chatRoom) {
+      return res.status(404).json({ message: 'Chat room not found' });
     }
 
-    room.messages = room.messages.map(msg => {
-      if (messageIds.includes(msg._id.toString())) {
-        msg.read = true;
+    // Create new message
+    const newMessage = new Message({
+      chatRoomId,
+      sender: currentUser._id,
+      senderModel: currentUser.userType === 'User' ? 'User' : 'Business',
+      content
+    });
+
+    await newMessage.save();
+
+    // Update chat room's last message
+    chatRoom.lastMessage = newMessage._id;
+    await chatRoom.save();
+
+    res.status(201).json(newMessage);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get messages for a chat room
+exports.getMessages = async (req, res) => {
+  try {
+    const { chatRoomId } = req.params;
+    const currentUser = req.user;
+
+    // Check if chat room exists and user is a participant
+    const chatRoom = await ChatRoom.findById(chatRoomId);
+    if (!chatRoom) {
+      return res.status(404).json({ message: 'Chat room not found' });
+    }
+
+    const isParticipant = chatRoom.participants.some(
+      p => p.participantId.equals(currentUser._id) && 
+           p.participantModel === (currentUser.userType === 'User' ? 'User' : 'Business')
+    );
+
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Not authorized to view this chat' });
+    }
+
+    const messages = await Message.find({ chatRoomId })
+      .sort({ createdAt: 1 })
+      .populate('sender', 'username profilePic');
+
+    res.status(200).json(messages);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Update message status (read/delivered)
+exports.updateMessageStatus = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const currentUser = req.user;
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    // Check if user is a participant in the chat room
+    const chatRoom = await ChatRoom.findById(message.chatRoomId);
+    const isParticipant = chatRoom.participants.some(
+      p => p.participantId.equals(currentUser._id) && 
+           p.participantModel === (currentUser.userType === 'User' ? 'User' : 'Business')
+    );
+
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Not authorized to update this message' });
+    }
+
+    // Check if message is already read by this user
+    const alreadyRead = message.readBy.some(
+      r => r.readerId.equals(currentUser._id) && 
+           r.readerModel === (currentUser.userType === 'User' ? 'User' : 'Business')
+    );
+
+    if (!alreadyRead) {
+      message.readBy.push({
+        readerId: currentUser._id,
+        readerModel: currentUser.userType === 'User' ? 'User' : 'Business'
+      });
+      
+      if (message.readBy.length === chatRoom.participants.length - 1) {
+        message.status = 'read';
+      } else {
+        message.status = 'delivered';
       }
-      return msg;
-    });
+      
+      await message.save();
+    }
 
-    await room.save();
-    res.status(200).json({ message: 'Messages marked as read', room });
+    res.status(200).json(message);
   } catch (error) {
-    console.error('Error marking messages as read:', error);
-    res.status(500).json({ message: 'Failed to mark messages as read' });
+    res.status(500).json({ message: error.message });
   }
 };
 
-const unreadMessagesCount = async (req, res) => {
-  const userId = req.user.id;
-  const userType = req.user.userType;
-
+// Update typing status
+exports.updateTypingStatus = async (req, res) => {
   try {
-    const rooms = await Chat.find({
-      $or: [
-        { participant1Id: userId, participant1Type: userType },
-        { participant2Id: userId, participant2Type: userType }
-      ]
-    });
+    const { chatRoomId, isTyping } = req.body;
+    const currentUser = req.user;
 
-    let totalUnread = 0;
-    rooms.forEach(room => {
-      const unreadInRoom = room.messages.filter(msg => 
-        !msg.read && 
-        !(msg.senderId === userId && msg.senderType === userType)
-      ).length;
-      totalUnread += unreadInRoom;
-    });
+    const chatRoom = await ChatRoom.findById(chatRoomId);
+    if (!chatRoom) {
+      return res.status(404).json({ message: 'Chat room not found' });
+    }
 
-    res.status(200).json({ unreadCount: totalUnread });
+    // Find the participant and update typing status
+    const participantIndex = chatRoom.participants.findIndex(
+      p => p.participantId.equals(currentUser._id) && 
+           p.participantModel === (currentUser.userType === 'User' ? 'User' : 'Business')
+    );
+
+    if (participantIndex === -1) {
+      return res.status(403).json({ message: 'Not a participant in this chat room' });
+    }
+
+    chatRoom.participants[participantIndex].typing = isTyping;
+    await chatRoom.save();
+
+    res.status(200).json(chatRoom);
   } catch (error) {
-    console.error('Error counting unread messages:', error);
-    res.status(500).json({ message: 'Failed to count unread messages' });
+    res.status(500).json({ message: error.message });
   }
 };
 
-module.exports = {
-  create,
-  addNewMessage,
-  getRooms,
-  findRoomOf2Users,
-  markMessageAsRead,
-  unreadMessagesCount
+// Update last seen
+exports.updateLastSeen = async (req, res) => {
+  try {
+    const { chatRoomId } = req.body;
+    const currentUser = req.user;
+
+    const chatRoom = await ChatRoom.findById(chatRoomId);
+    if (!chatRoom) {
+      return res.status(404).json({ message: 'Chat room not found' });
+    }
+
+    // Find the participant and update last seen
+    const participantIndex = chatRoom.participants.findIndex(
+      p => p.participantId.equals(currentUser._id) && 
+           p.participantModel === (currentUser.userType === 'User' ? 'User' : 'Business')
+    );
+
+    if (participantIndex === -1) {
+      return res.status(403).json({ message: 'Not a participant in this chat room' });
+    }
+
+    chatRoom.participants[participantIndex].lastSeen = new Date();
+    await chatRoom.save();
+
+    res.status(200).json(chatRoom);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get user's chat rooms
+exports.getUserChatRooms = async (req, res) => {
+  try {
+    const currentUser = req.user;
+
+    const chatRooms = await ChatRoom.find({
+      'participants.participantId': currentUser._id,
+      'participants.participantModel': currentUser.userType === 'User' ? 'User' : 'Business'
+    })
+      .populate('participants.participantId', 'username profilePic')
+      .populate('lastMessage')
+      .sort({ updatedAt: -1 });
+
+    res.status(200).json(chatRooms);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };

@@ -1,49 +1,71 @@
 const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
-  senderId: {
+  chatRoomId: {
     type: mongoose.Schema.Types.ObjectId,
+    ref: 'ChatRoom',
     required: true
   },
-  senderType: {
+  sender: {
+    type: mongoose.Schema.Types.ObjectId,
+    refPath: 'senderModel',
+    required: true
+  },
+  senderModel: {
     type: String,
     required: true,
-    enum: ['User', 'businessUser']
+    enum: ['User', 'Business']
   },
-  message: {
+  content: {
     type: String,
     required: true
   },
-  timestamp: {
-    type: Date,
-    default: Date.now
-  },
-  read: {
-    type: Boolean,
-    default: false
+  readBy: [{
+    readerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: 'readBy.readerModel'
+    },
+    readerModel: {
+      type: String,
+      enum: ['User', 'Business']
+    },
+    readAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  status: {
+    type: String,
+    enum: ['sent', 'delivered', 'read'],
+    default: 'sent'
   }
-});
+}, { timestamps: true });
 
 const chatRoomSchema = new mongoose.Schema({
-  participant1Id: {
+  participants: [{
+    participantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: 'participants.participantModel',
+      required: true
+    },
+    participantModel: {
+      type: String,
+      required: true,
+      enum: ['User', 'Business']
+    },
+    lastSeen: {
+      type: Date,
+      default: null
+    },
+    typing: {
+      type: Boolean,
+      default: false
+    }
+  }],
+  lastMessage: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true
+    ref: 'Message'
   },
-  participant1Type: {
-    type: String,
-    required: true,
-    enum: ['User', 'businessUser']
-  },
-  participant2Id: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true
-  },
-  participant2Type: {
-    type: String,
-    required: true,
-    enum: ['User', 'businessUser']
-  },
-  messages: [messageSchema],
   createdAt: {
     type: Date,
     default: Date.now
@@ -59,13 +81,7 @@ chatRoomSchema.pre('save', function(next) {
   next();
 });
 
-chatRoomSchema.index({
-  participant1Id: 1,
-  participant1Type: 1,
-  participant2Id: 1,
-  participant2Type: 1
-}, { unique: true });
+const Message = mongoose.model('Message', messageSchema);
+const ChatRoom = mongoose.model('ChatRoom', chatRoomSchema);
 
-const Chat = mongoose.model('Chat', chatRoomSchema);
-
-module.exports = Chat;
+module.exports = { Message, ChatRoom };
