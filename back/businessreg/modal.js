@@ -42,7 +42,7 @@ const businessSchema = new mongoose.Schema({
   address: {
     type: String,
     required: false,
-    minlength: 1,
+    minlength: null,
     default: null,
   },
   about: {

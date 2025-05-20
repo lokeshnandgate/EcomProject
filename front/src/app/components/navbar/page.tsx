@@ -65,46 +65,27 @@ const Navbar: React.FC = () => {
     const token = sessionStorage.getItem('token');
     const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || 'http://localhost:3001';
 
-    if (!API_URL) {
-      console.error('API base URL is not defined. Please check your environment variables.');
-      alert('Logout failed: API configuration error.');
-      return; // Stop execution if API_URL is critical and missing
-    }
+    // Perform client-side cleanup first
+    sessionStorage.removeItem('userInfo');
+    sessionStorage.removeItem('businessInfo');
+    sessionStorage.removeItem('token');
+    setCurrentUserProfile(null);
 
-    if (token) {
+    // Attempt server logout if token exists
+    if (token && API_URL) {
       try {
-        const response = await axios.post(`${API_URL}/api/logout`, {}, {
+        await axios.post(`${API_URL}/api/logout`, {}, {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
         });
-
-        if (response.status === 200) {
-          console.log('Logout successful (backend confirmed)');
-        }
       } catch (error) {
-        if (axios.isAxiosError(error)) {
-          if (error.response?.status === 404) {
-            console.error('Logout endpoint not found (404). Ensure `/api/logout` is implemented and API URL is correct on the server.');
-            alert('Logout failed: Server endpoint not found. Please contact support.');
-          } else {
-            console.error(`Logout error: ${error.response?.status} - ${error.response?.data?.message || error.message}`);
-            alert(`Logout failed: ${error.response?.data?.message || 'Server error.'}`);
-          }
-        } else {
-          console.error('Unexpected error during logout:', error);
-          alert('Logout failed due to an unexpected error. Please try again.');
-        }
+        // Log the error but continue with the logout process
+        console.warn('Logout API call failed (proceeding with client-side cleanup):', error);
       }
-    } else {
-      console.warn('No token found in session storage. Proceeding with client-side logout only.');
     }
 
-    sessionStorage.removeItem('userInfo');
-    sessionStorage.removeItem('businessInfo');
-    sessionStorage.removeItem('token');
-    setCurrentUserProfile(null);
     router.push('/');
   };
 
@@ -150,7 +131,7 @@ const Navbar: React.FC = () => {
           />
 
           <div className="icons-container">
-            <button onClick={() => router.push('/pages/chat')} className="icon-button">
+            <button onClick={handleChat} className="icon-button">
               <img src="/chat.svg" alt="Chat" />
             </button>
 
@@ -158,11 +139,12 @@ const Navbar: React.FC = () => {
               <img
                 src={currentUserProfile?.profilePic || '/default-profile.png'}
                 alt="Profile"
+                className="profile-image"
               />
             </button>
 
             <div className="dropdown">
-              <button onClick={toggleDropdown} className="dropdown-button" style={{ backgroundColor: 'transparent', color: 'inherit', border: 'none', padding: 0, fontSize: '24px', cursor: 'pointer' }}>
+              <button onClick={toggleDropdown} className="dropdown-button">
                 ⋮
               </button>
               {dropdownOpen && (
@@ -183,7 +165,7 @@ const Navbar: React.FC = () => {
       {searchResults.length > 0 && (
         <div className="search-results">
           {searchResults.map((product) => (
-            <div key={product._id} className="search-result-item">
+            <div key={product._id} className="search-result-item" onClick={() => router.push(`/pages/product/${product._id}`)}>
               <img src={product.image} alt={product.title} className="result-image" />
               <div>
                 <h4>{product.title}</h4>
@@ -202,29 +184,40 @@ const Navbar: React.FC = () => {
           background-color: #f8f9fa;
           border-bottom: 1px solid #ddd;
           gap: 15px;
+          position: relative;
+          z-index: 1000;
         }
         .navbar-title {
           font-size: 18px;
           font-weight: bold;
+          cursor: pointer;
         }
         .search-input {
           flex-grow: 1;
           max-width: 300px;
-          padding: 6px 12px;
+          padding: 8px 12px;
           border: 1px solid #ccc;
           border-radius: 8px;
           font-size: 14px;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+        .search-input:focus {
+          border-color: #0070f3;
         }
         .icons-container {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 15px;
         }
         .icon-button {
           background: none;
           border: none;
           padding: 0;
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         .icon-button img {
           width: 32px;
@@ -233,6 +226,13 @@ const Navbar: React.FC = () => {
           border: 1px solid #ccc;
           padding: 4px;
           background: white;
+          object-fit: cover;
+          transition: transform 0.2s;
+        }
+        .icon-button:hover img {
+          transform: scale(1.05);
+        }
+        .profile-image {
           object-fit: cover;
         }
         .dropdown {
@@ -245,6 +245,15 @@ const Navbar: React.FC = () => {
           padding: 0;
           font-size: 24px;
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+        }
+        .dropdown-button:hover {
+          background-color: #f0f0f0;
+          border-radius: 4px;
         }
         .dropdown-menu {
           position: absolute;
@@ -252,53 +261,61 @@ const Navbar: React.FC = () => {
           right: 0;
           background: white;
           border: 1px solid #ddd;
-          border-radius: 4px;
-          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
           z-index: 1000;
-          min-width: 120px;
+          min-width: 150px;
+          overflow: hidden;
         }
         .dropdown-item {
-          padding: 10px;
+          padding: 10px 16px;
           cursor: pointer;
           background: none;
           border: none;
           text-align: left;
           width: 100%;
           display: block;
+          font-size: 14px;
+          transition: background-color 0.2s;
         }
         .dropdown-item:hover {
-          background-color: #f0f0f0;
+          background-color: #f5f5f5;
         }
-
         .search-results {
-          background-color: #fffce8;
-          padding: 10px 20px;
-          border-top: 1px solid #ddd;
-          max-height: 300px;
-          overflow-y: auto;
           position: absolute;
-          width: 100%;
-          box-sizing: border-box;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background-color: white;
+          border: 1px solid #ddd;
+          border-top: none;
+          border-radius: 0 0 8px 8px;
+          max-height: 400px;
+          overflow-y: auto;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
           z-index: 999;
         }
-
         .search-result-item {
           display: flex;
           align-items: center;
-          padding: 10px 0;
+          padding: 12px 20px;
           border-bottom: 1px solid #eee;
-          gap: 12px;
+          gap: 15px;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+        .search-result-item:hover {
+          background-color: #f9f9f9;
         }
         .search-result-item:last-child {
           border-bottom: none;
         }
-
         .result-image {
-          width: 60px;
-          height: 60px;
+          width: 50px;
+          height: 50px;
           object-fit: cover;
-          border-radius: 8px;
-          border: 1px solid #ccc;
+          border-radius: 4px;
+          border: 1px solid #eee;
         }
       `}</style>
     </>

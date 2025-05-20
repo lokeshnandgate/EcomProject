@@ -1,5 +1,3 @@
-// backend/controllers/logoutController.js
-
 const tokenBlacklist = new Set();
 
 exports.logoutUser = (req, res) => {
