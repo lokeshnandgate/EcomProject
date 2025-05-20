@@ -3,30 +3,14 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
-const http = require('http');
-const socketIo = require('socket.io');
+const http = require('http'); // Needed for socket.io
 
-const userloginRoutes = require('./login/routes');
-const businessRoutes = require('./businessreg/routes');
-const productRoutes = require('./product/routes');
-const userregRoutes = require('./userreg/routes');
-const profileRoutes = require('./profile/routes');
-const authRoutes = require('./logout/routes');
-const chatRoutes = require('./chat/routes');
-const Chat = require('./chat/modal'); 
-const searchUsers= require('./search/routes');
+// Load environment variables
 dotenv.config();
 
+// Create express app
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: '*', // allow all origins or specify frontend host
-    methods: ['GET', 'POST']
-  }
-});
-
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
@@ -45,7 +29,17 @@ mongoose.connect(process.env.MONGO_URI, {
   process.exit(1);
 });
 
-// Routes
+// Import routes
+const userloginRoutes = require('./login/routes');
+const businessRoutes = require('./businessreg/routes');
+const productRoutes = require('./product/routes');
+const userregRoutes = require('./userreg/routes');
+const profileRoutes = require('./profile/routes');
+const authRoutes = require('./logout/routes');
+const chatRoutes = require('./chat/routes');
+const searchUsers = require('./search/routes');
+
+// Use routes
 app.use('/api/login', userloginRoutes);
 app.use('/api/businessreg', businessRoutes);
 app.use('/api/products', productRoutes);
@@ -54,57 +48,18 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/logout', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/search', searchUsers);
-// WebSocket events
-let users = {}; // Store active users and their socket IDs
 
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const { init } = require('./config/socket');
+const { initializeSocket } = require('./sockets/chatSocket');
+const io = init(server);
+
+// Handle socket connection
 io.on('connection', (socket) => {
-  console.log('New WebSocket connection:', socket.id);
-
-  // Register the user with their userId
-  socket.on('register', (userId) => {
-    users[userId] = socket.id;
-    console.log('User registered:', userId, socket.id);
-  });
-
-  // Handle message sending
-  socket.on('sendMessage', async (data) => {
-    const { senderId, senderType, receiverId, receiverType, message, groupId } = data;
-
-    try {
-      const newMessage = new Chat({
-        senderId,
-        senderType,
-        receiverId,
-        receiverType,
-        message,
-        groupId: groupId || null,
-      });
-
-      await newMessage.save();
-
-      // Emit to receiver if online
-      if (users[receiverId]) {
-        io.to(users[receiverId]).emit('receiveMessage', newMessage);
-      } else {
-        console.log('Receiver not online:', receiverId);
-      }
-
-      console.log('Message sent:', newMessage);
-    } catch (err) {
-      console.error('Error sending message:', err);
-    }
-  });
-
-  // Handle disconnect
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    for (let userId in users) {
-      if (users[userId] === socket.id) {
-        delete users[userId];
-        break;
-      }
-    }
-  });
+  initializeSocket(socket);
 });
 
 // Start server

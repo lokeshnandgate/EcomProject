@@ -1,246 +1,257 @@
-const { Message, ChatRoom } = require('./modal');
+const Chat = require('./modal');
+const Message = require('../message/modal');
 const User = require('../userreg/modal');
 const Business = require('../businessreg/modal');
 
-// Create or get existing chat room
-exports.createOrGetChatRoom = async (req, res) => {
+// Create or access a direct chat
+exports.accessChat = async (req, res) => {
   try {
-    const { participantId } = req.body;
-    const currentUser = req.user;
+    const { participantId, participantType } = req.body;
+    const senderId = req.user.userId;
+    const senderType = req.user.userType === 'User' ? 'User' : 'Business';
+
+    if (!participantId || !participantType) {
+      return res.status(400).json({ message: 'Participant ID and type are required' });
+    }
 
     // Check if participant exists
-    let participant = await User.findById(participantId);
-    let participantModel = 'User';
-    
-    if (!participant) {
+    let participant;
+    if (participantType === 'User') {
+      participant = await User.findById(participantId);
+    } else {
       participant = await Business.findById(participantId);
-      participantModel = 'Business';
-      if (!participant) {
-        return res.status(404).json({ message: 'Participant not found' });
-      }
     }
 
-    // Check if chat room already exists
-    const existingRoom = await ChatRoom.findOne({
-      participants: {
-        $all: [
-          { $elemMatch: { participantId: currentUser._id, participantModel: currentUser.userType === 'User' ? 'User' : 'Business' } },
-          { $elemMatch: { participantId: participant._id, participantModel: participantModel } }
-        ]
-      }
-    });
-
-    if (existingRoom) {
-      return res.status(200).json(existingRoom);
+    if (!participant) {
+      return res.status(404).json({ message: 'Participant not found' });
     }
 
-    // Create new chat room
-    const newRoom = new ChatRoom({
-      participants: [
-        {
-          participantId: currentUser._id,
-          participantModel: currentUser.userType === 'User' ? 'User' : 'Business'
-        },
-        {
-          participantId: participant._id,
-          participantModel: participantModel
-        }
+    // Check if chat already exists
+    let chat = await Chat.findOne({
+      isGroupChat: false,
+      $and: [
+        { participants: { $in: [senderId] } },
+        { participants: { $in: [participantId] } },
+        { participantModel: senderType },
+        { participantModel: participantType }
       ]
-    });
-
-    await newRoom.save();
-    res.status(201).json(newRoom);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Send message
-exports.sendMessage = async (req, res) => {
-  try {
-    const { chatRoomId, content } = req.body;
-    const currentUser = req.user;
-
-    // Check if chat room exists
-    const chatRoom = await ChatRoom.findById(chatRoomId);
-    if (!chatRoom) {
-      return res.status(404).json({ message: 'Chat room not found' });
-    }
-
-    // Create new message
-    const newMessage = new Message({
-      chatRoomId,
-      sender: currentUser._id,
-      senderModel: currentUser.userType === 'User' ? 'User' : 'Business',
-      content
-    });
-
-    await newMessage.save();
-
-    // Update chat room's last message
-    chatRoom.lastMessage = newMessage._id;
-    await chatRoom.save();
-
-    res.status(201).json(newMessage);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Get messages for a chat room
-exports.getMessages = async (req, res) => {
-  try {
-    const { chatRoomId } = req.params;
-    const currentUser = req.user;
-
-    // Check if chat room exists and user is a participant
-    const chatRoom = await ChatRoom.findById(chatRoomId);
-    if (!chatRoom) {
-      return res.status(404).json({ message: 'Chat room not found' });
-    }
-
-    const isParticipant = chatRoom.participants.some(
-      p => p.participantId.equals(currentUser._id) && 
-           p.participantModel === (currentUser.userType === 'User' ? 'User' : 'Business')
-    );
-
-    if (!isParticipant) {
-      return res.status(403).json({ message: 'Not authorized to view this chat' });
-    }
-
-    const messages = await Message.find({ chatRoomId })
-      .sort({ createdAt: 1 })
-      .populate('sender', 'username profilePic');
-
-    res.status(200).json(messages);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Update message status (read/delivered)
-exports.updateMessageStatus = async (req, res) => {
-  try {
-    const { messageId } = req.params;
-    const currentUser = req.user;
-
-    const message = await Message.findById(messageId);
-    if (!message) {
-      return res.status(404).json({ message: 'Message not found' });
-    }
-
-    // Check if user is a participant in the chat room
-    const chatRoom = await ChatRoom.findById(message.chatRoomId);
-    const isParticipant = chatRoom.participants.some(
-      p => p.participantId.equals(currentUser._id) && 
-           p.participantModel === (currentUser.userType === 'User' ? 'User' : 'Business')
-    );
-
-    if (!isParticipant) {
-      return res.status(403).json({ message: 'Not authorized to update this message' });
-    }
-
-    // Check if message is already read by this user
-    const alreadyRead = message.readBy.some(
-      r => r.readerId.equals(currentUser._id) && 
-           r.readerModel === (currentUser.userType === 'User' ? 'User' : 'Business')
-    );
-
-    if (!alreadyRead) {
-      message.readBy.push({
-        readerId: currentUser._id,
-        readerModel: currentUser.userType === 'User' ? 'User' : 'Business'
-      });
-      
-      if (message.readBy.length === chatRoom.participants.length - 1) {
-        message.status = 'read';
-      } else {
-        message.status = 'delivered';
-      }
-      
-      await message.save();
-    }
-
-    res.status(200).json(message);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Update typing status
-exports.updateTypingStatus = async (req, res) => {
-  try {
-    const { chatRoomId, isTyping } = req.body;
-    const currentUser = req.user;
-
-    const chatRoom = await ChatRoom.findById(chatRoomId);
-    if (!chatRoom) {
-      return res.status(404).json({ message: 'Chat room not found' });
-    }
-
-    // Find the participant and update typing status
-    const participantIndex = chatRoom.participants.findIndex(
-      p => p.participantId.equals(currentUser._id) && 
-           p.participantModel === (currentUser.userType === 'User' ? 'User' : 'Business')
-    );
-
-    if (participantIndex === -1) {
-      return res.status(403).json({ message: 'Not a participant in this chat room' });
-    }
-
-    chatRoom.participants[participantIndex].typing = isTyping;
-    await chatRoom.save();
-
-    res.status(200).json(chatRoom);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Update last seen
-exports.updateLastSeen = async (req, res) => {
-  try {
-    const { chatRoomId } = req.body;
-    const currentUser = req.user;
-
-    const chatRoom = await ChatRoom.findById(chatRoomId);
-    if (!chatRoom) {
-      return res.status(404).json({ message: 'Chat room not found' });
-    }
-
-    // Find the participant and update last seen
-    const participantIndex = chatRoom.participants.findIndex(
-      p => p.participantId.equals(currentUser._id) && 
-           p.participantModel === (currentUser.userType === 'User' ? 'User' : 'Business')
-    );
-
-    if (participantIndex === -1) {
-      return res.status(403).json({ message: 'Not a participant in this chat room' });
-    }
-
-    chatRoom.participants[participantIndex].lastSeen = new Date();
-    await chatRoom.save();
-
-    res.status(200).json(chatRoom);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Get user's chat rooms
-exports.getUserChatRooms = async (req, res) => {
-  try {
-    const currentUser = req.user;
-
-    const chatRooms = await ChatRoom.find({
-      'participants.participantId': currentUser._id,
-      'participants.participantModel': currentUser.userType === 'User' ? 'User' : 'Business'
     })
-      .populate('participants.participantId', 'username profilePic')
+      .populate('participants')
+      .populate('lastMessage');
+
+    if (chat) {
+      return res.status(200).json(chat);
+    }
+
+    // Create new chat
+    chat = await Chat.create({
+      participants: [senderId, participantId],
+      participantModel: participantType,
+      isGroupChat: false
+    });
+
+    const fullChat = await Chat.findOne({ _id: chat._id })
+      .populate('participants')
+      .populate('lastMessage');
+
+    res.status(201).json(fullChat);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Create a group chat
+exports.createGroupChat = async (req, res) => {
+  try {
+    const { name, participants, participantTypes } = req.body;
+    const adminId = req.user.userId;
+    console.log('Admin ID:', adminId);
+    console.log('Participants:', participants);
+    console.log('Participant Types:', participantTypes);
+    const adminType = req.user.userType === 'User' ? 'User' : 'Business';
+
+    if (!name || !participants || !participantTypes || participants.length !== participantTypes.length) {
+      return res.status(400).json({ message: 'Please provide all required fields' });
+    }
+
+    if (participants.length < 2) {
+      return res.status(400).json({ message: 'Group must have at least 2 participants' });
+    }
+
+    // Check all participants exist
+    for (let i = 0; i < participants.length; i++) {
+      if (participantTypes[i] === 'User') {
+        const user = await User.findById(participants[i]);
+        if (!user) {
+          return res.status(404).json({ message: `User with ID ${participants[i]} not found` });
+        }
+      } else {
+        const business = await Business.findById(participants[i]);
+        if (!business) {
+          return res.status(404).json({ message: `Business with ID ${participants[i]} not found` });
+        }
+      }
+    }
+
+    // Create group chat
+    const groupChat = await Chat.create({
+      groupName: name,
+      participants: [...participants, adminId],
+      participantModel: adminType,
+      isGroupChat: true,
+      groupAdmin: adminId,
+      adminModel: adminType,
+      unreadCounts: participants.map(participant => ({
+        participant,
+        participantModel: participantTypes[participants.indexOf(participant)],
+        count: 0
+      }))
+    });
+
+    const fullGroupChat = await Chat.findOne({ _id: groupChat._id })
+      .populate('participants')
+      .populate('groupAdmin')
+      .populate('lastMessage');
+
+    res.status(201).json(fullGroupChat);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get all chats for a user
+exports.getUserChats = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const userType = req.user.userType === 'User' ? 'User' : 'Business';
+
+    const chats = await Chat.find({
+      participants: { $in: [userId] },
+      participantModel: userType
+    })
+      .populate('participants')
+      .populate('groupAdmin')
       .populate('lastMessage')
       .sort({ updatedAt: -1 });
 
-    res.status(200).json(chatRooms);
+    res.status(200).json(chats);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get single chat
+exports.getChat = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const userId = req.user.userId;
+    const userType = req.user.userType === 'User' ? 'User' : 'Business';
+
+    const chat = await Chat.findOne({
+      _id: chatId,
+      participants: { $in: [userId] },
+      participantModel: userType
+    })
+      .populate('participants')
+      .populate('groupAdmin')
+      .populate('lastMessage');
+
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found or access denied' });
+    }
+
+    res.status(200).json(chat);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Add to group
+exports.addToGroup = async (req, res) => {
+  try {
+    const { chatId, participantId, participantType } = req.body;
+    const adminId = req.user.userId;
+
+    // Check if chat exists and user is admin
+    const chat = await Chat.findOne({
+      _id: chatId,
+      groupAdmin: adminId,
+      isGroupChat: true
+    });
+
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found or you are not the admin' });
+    }
+
+    // Check if participant exists
+    let participant;
+    if (participantType === 'User') {
+      participant = await User.findById(participantId);
+    } else {
+      participant = await Business.findById(participantId);
+    }
+
+    if (!participant) {
+      return res.status(404).json({ message: 'Participant not found' });
+    }
+
+    // Check if already in group
+    if (chat.participants.includes(participantId)) {
+      return res.status(400).json({ message: 'Participant already in group' });
+    }
+
+    // Add to group
+    chat.participants.push(participantId);
+    chat.unreadCounts.push({
+      participant: participantId,
+      participantModel: participantType,
+      count: 0
+    });
+    await chat.save();
+
+    const updatedChat = await Chat.findById(chatId)
+      .populate('participants')
+      .populate('groupAdmin')
+      .populate('lastMessage');
+
+    res.status(200).json(updatedChat);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Remove from group
+exports.removeFromGroup = async (req, res) => {
+  try {
+    const { chatId, participantId } = req.body;
+    const adminId = req.user.userId;
+
+    // Check if chat exists and user is admin
+    const chat = await Chat.findOne({
+      _id: chatId,
+      groupAdmin: adminId,
+      isGroupChat: true
+    });
+
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found or you are not the admin' });
+    }
+
+    // Remove from group
+    chat.participants = chat.participants.filter(
+      participant => participant.toString() !== participantId
+    );
+    chat.unreadCounts = chat.unreadCounts.filter(
+      uc => uc.participant.toString() !== participantId
+    );
+    await chat.save();
+
+    const updatedChat = await Chat.findById(chatId)
+      .populate('participants')
+      .populate('groupAdmin')
+      .populate('lastMessage');
+
+    res.status(200).json(updatedChat);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

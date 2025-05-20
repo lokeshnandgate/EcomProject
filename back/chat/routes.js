@@ -1,27 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const chatController = require('./controller');
-const verifyToken = require('../Middleware/authMiddleware');
+const verifyToken = require('../middleware/authMiddleware');
 
-// Create or get chat room
-router.post('/rooms', verifyToken, chatController.createOrGetChatRoom);
+// Access or create chat
+router.post('/accessChat', verifyToken, chatController.accessChat);
 
-// Send message
-router.post('/messages', verifyToken, chatController.sendMessage);
+// Create group chat
+router.post('/group', verifyToken, chatController.createGroupChat);
 
-// Get messages for a chat room
-router.get('/messages/:chatRoomId', verifyToken, chatController.getMessages);
+// Get all chats for user
+router.get('/getUserChat', verifyToken, chatController.getUserChats);
 
-// Update message status
-router.put('/messages/:messageId/status', verifyToken, chatController.updateMessageStatus);
+// Get single chat
+router.get('/:chatId', verifyToken, chatController.getChat);
 
-// Update typing status
-router.put('/typing', verifyToken, chatController.updateTypingStatus);
+// Add to group
+router.post('/group/add', verifyToken, chatController.addToGroup);
 
-// Update last seen
-router.put('/last-seen', verifyToken, chatController.updateLastSeen);
-
-// Get user's chat rooms
-router.get('/rooms', verifyToken, chatController.getUserChatRooms);
+// Remove from group
+router.post('/group/remove', verifyToken, chatController.removeFromGroup);
 
 module.exports = router;
