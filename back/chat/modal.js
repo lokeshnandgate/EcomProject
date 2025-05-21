@@ -1,55 +1,71 @@
 const mongoose = require('mongoose');
 
 const chatSchema = new mongoose.Schema({
-  participants: [{
-    type: mongoose.Schema.Types.ObjectId,
-    refPath: 'participantModel'
-  }],
-  participantModel: {
-    type: String,
-    enum: ['User', 'Business'],
-    required: true
-  },
   isGroupChat: {
     type: Boolean,
-    default: false
+    default: false,
   },
+
+  // One-to-one and group participants
+  participants: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: 'participantModels'
+    }
+  ],
+
+  // Corresponding models for each participant (User or Business)
+  participantModels: [
+    {
+      type: String,
+      enum: ['User', 'Business']
+    }
+  ],
+
+  // Group chat name (required for groups)
   groupName: {
     type: String,
-    required: function() { return this.isGroupChat; }
+    required: function () {
+      return this.isGroupChat;
+    }
   },
+
+  // Group admin and their model
   groupAdmin: {
     type: mongoose.Schema.Types.ObjectId,
     refPath: 'adminModel',
-    required: function() { return this.isGroupChat; }
+    required: function () {
+      return this.isGroupChat;
+    }
   },
   adminModel: {
     type: String,
     enum: ['User', 'Business']
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
+
+  // Last message reference
   lastMessage: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Message'
   },
-  unreadCounts: [{
-    participant: {
-      type: mongoose.Schema.Types.ObjectId,
-      refPath: 'unreadCounts.participantModel'
-    },
-    participantModel: {
-      type: String,
-      enum: ['User', 'Business']
-    },
-    count: {
-      type: Number,
-      default: 0
+
+  // Unread message counts per user/business
+  unreadCounts: [
+    {
+      participant: {
+        type: mongoose.Schema.Types.ObjectId,
+        refPath: 'unreadCounts.participantModel'
+      },
+      participantModel: {
+        type: String,
+        enum: ['User', 'Business']
+      },
+      count: {
+        type: Number,
+        default: 0
+      }
     }
-  }]
+  ]
 }, { timestamps: true });
 
-const Chat = mongoose.model('Chat', chatSchema);
-module.exports = Chat;
+module.exports = mongoose.model('Chat', chatSchema);

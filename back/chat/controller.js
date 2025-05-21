@@ -14,7 +14,7 @@ exports.accessChat = async (req, res) => {
       return res.status(400).json({ message: 'Participant ID and type are required' });
     }
 
-    // Check if participant exists
+    // Validate participant existence
     let participant;
     if (participantType === 'User') {
       participant = await User.findById(participantId);
@@ -26,37 +26,43 @@ exports.accessChat = async (req, res) => {
       return res.status(404).json({ message: 'Participant not found' });
     }
 
-    // Check if chat already exists
+    // Check for existing 1-on-1 chat with *same two participants and their types*
     let chat = await Chat.findOne({
       isGroupChat: false,
       $and: [
-        { participants: { $in: [senderId] } },
-        { participants: { $in: [participantId] } },
-        { participantModel: senderType },
-        { participantModel: participantType }
+        { participants: { $all: [senderId, participantId], $size: 2 } },
+        { participantModels: { $all: [senderType, participantType], $size: 2 } }
       ]
     })
-      .populate('participants')
+      .populate({
+        path: 'participants',
+        strictPopulate: false
+      })
       .populate('lastMessage');
 
     if (chat) {
       return res.status(200).json(chat);
     }
 
-    // Create new chat
+    // Create new 1-on-1 chat
     chat = await Chat.create({
       participants: [senderId, participantId],
-      participantModel: participantType,
+      participantModels: [senderType, participantType],
       isGroupChat: false
     });
 
-    const fullChat = await Chat.findOne({ _id: chat._id })
-      .populate('participants')
+    const fullChat = await Chat.findById(chat._id)
+      .populate({
+        path: 'participants',
+        strictPopulate: false
+      })
       .populate('lastMessage');
 
     res.status(201).json(fullChat);
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Access Chat Error:', error);
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
 
@@ -65,9 +71,6 @@ exports.createGroupChat = async (req, res) => {
   try {
     const { name, participants, participantTypes } = req.body;
     const adminId = req.user.userId;
-    console.log('Admin ID:', adminId);
-    console.log('Participants:', participants);
-    console.log('Participant Types:', participantTypes);
     const adminType = req.user.userType === 'User' ? 'User' : 'Business';
 
     if (!name || !participants || !participantTypes || participants.length !== participantTypes.length) {
@@ -78,17 +81,31 @@ exports.createGroupChat = async (req, res) => {
       return res.status(400).json({ message: 'Group must have at least 2 participants' });
     }
 
-    // Check all participants exist
+    // Check if group with same name already exists for this admin
+    const existingGroup = await Chat.findOne({
+      isGroupChat: true,
+      groupName: name,
+      groupAdmin: adminId
+    });
+
+    if (existingGroup) {
+      return res.status(400).json({ message: 'A group with this name already exists under your account' });
+    }
+
+    // Check if all participants exist
     for (let i = 0; i < participants.length; i++) {
-      if (participantTypes[i] === 'User') {
-        const user = await User.findById(participants[i]);
+      const id = participants[i];
+      const type = participantTypes[i];
+
+      if (type === 'User') {
+        const user = await User.findById(id);
         if (!user) {
-          return res.status(404).json({ message: `User with ID ${participants[i]} not found` });
+          return res.status(404).json({ message: `User with ID ${id} not found` });
         }
       } else {
-        const business = await Business.findById(participants[i]);
+        const business = await Business.findById(id);
         if (!business) {
-          return res.status(404).json({ message: `Business with ID ${participants[i]} not found` });
+          return res.status(404).json({ message: `Business with ID ${id} not found` });
         }
       }
     }
@@ -97,24 +114,31 @@ exports.createGroupChat = async (req, res) => {
     const groupChat = await Chat.create({
       groupName: name,
       participants: [...participants, adminId],
-      participantModel: adminType,
+      participantModels: [...participantTypes, adminType],
       isGroupChat: true,
       groupAdmin: adminId,
       adminModel: adminType,
-      unreadCounts: participants.map(participant => ({
-        participant,
-        participantModel: participantTypes[participants.indexOf(participant)],
+      unreadCounts: [...participants, adminId].map((participantId, index) => ({
+        participant: participantId,
+        participantModel: index < participantTypes.length ? participantTypes[index] : adminType,
         count: 0
       }))
     });
 
-    const fullGroupChat = await Chat.findOne({ _id: groupChat._id })
-      .populate('participants')
-      .populate('groupAdmin')
+    const fullGroupChat = await Chat.findById(groupChat._id)
+      .populate({
+        path: 'participants',
+        strictPopulate: false
+      })
+      .populate({
+        path: 'groupAdmin',
+        strictPopulate: false
+      })
       .populate('lastMessage');
 
     res.status(201).json(fullGroupChat);
   } catch (error) {
+    console.error('Create Group Chat Error:', error);
     res.status(500).json({ message: error.message });
   }
 };

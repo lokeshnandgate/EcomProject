@@ -4,7 +4,7 @@ const messageController = require('./controller');
 const verifyToken = require('../middleware/authMiddleware');
 
 // Send message
-router.post('/', verifyToken, messageController.sendMessage);
+router.post('/sendmsg', verifyToken, messageController.sendMessage);
 
 // Get all messages for a chat
 router.get('/:chatId', verifyToken, messageController.getMessages);

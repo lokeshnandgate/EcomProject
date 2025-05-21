@@ -38,7 +38,7 @@ const profileRoutes = require('./profile/routes');
 const authRoutes = require('./logout/routes');
 const chatRoutes = require('./chat/routes');
 const searchUsers = require('./search/routes');
-
+const messageRoutes = require('./message/routes');
 // Use routes
 app.use('/api/login', userloginRoutes);
 app.use('/api/businessreg', businessRoutes);
@@ -48,7 +48,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/logout', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/search', searchUsers);
-
+app.use('/api/message', messageRoutes);
 // Create HTTP server
 const server = http.createServer(app);
 

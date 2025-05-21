@@ -1,4 +1,4 @@
-const Message = require('../models/Message');
+const Message = require('./modal');
 const Chat = require('../chat/modal');
 const User = require('../userreg/modal');
 const Business = require('../businessreg/modal');
@@ -14,42 +14,38 @@ exports.sendMessage = async (req, res) => {
       return res.status(400).json({ message: 'Content and chat ID are required' });
     }
 
-    // Check if chat exists and user is a participant
+    // Find the chat and confirm user is a participant
     const chat = await Chat.findOne({
       _id: chatId,
-      participants: { $in: [senderId] }
+      users: { $in: [senderId] } // or participants if your field is named differently
     });
 
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found or access denied' });
     }
 
-    // Create message
-    const message = await Message.create({
+    // Create the message object
+    const newMessage = {
+      _id: new mongoose.Types.ObjectId(),
       sender: senderId,
       senderModel: senderType,
-      content,
-      chat: chatId
-    });
+      content: content,
+      createdAt: new Date()
+    };
 
-    // Update chat's last message
-    chat.lastMessage = message._id;
+    // Push the message to the messages array
+    chat.messages.push(newMessage);
+    chat.recentMessageTime = new Date(); // Optional: track last message timestamp
+
     await chat.save();
 
-    // Increment unread counts for all participants except sender
-    chat.unreadCounts.forEach(uc => {
-      if (uc.participant.toString() !== senderId) {
-        uc.count += 1;
-      }
+    res.status(201).json({
+      message: 'Message sent successfully',
+      data: newMessage,
+      chatId: chat._id
     });
-    await chat.save();
-
-    const fullMessage = await Message.findById(message._id)
-      .populate('sender')
-      .populate('chat');
-
-    res.status(201).json(fullMessage);
   } catch (error) {
+    console.error('Send message error:', error);
     res.status(500).json({ message: error.message });
   }
 };
