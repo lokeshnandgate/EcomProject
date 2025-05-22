@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
-const http = require('http'); // Needed for socket.io
+const http = require('http'); 
 
 // Load environment variables
 dotenv.config();
@@ -38,7 +38,7 @@ const profileRoutes = require('./profile/routes');
 const authRoutes = require('./logout/routes');
 const chatRoutes = require('./chat/routes');
 const searchUsers = require('./search/routes');
-const messageRoutes = require('./message/routes');
+
 // Use routes
 app.use('/api/login', userloginRoutes);
 app.use('/api/businessreg', businessRoutes);
@@ -48,19 +48,13 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/logout', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/search', searchUsers);
-app.use('/api/message', messageRoutes);
+
 // Create HTTP server
 const server = http.createServer(app);
 
 // Initialize Socket.IO
-const { init } = require('./config/socket');
-const { initializeSocket } = require('./sockets/chatSocket');
-const io = init(server);
-
-// Handle socket connection
-io.on('connection', (socket) => {
-  initializeSocket(socket);
-});
+const { init } = require('./sockets/chatSocket'); 
+const io = init(server); // Initialize socket.io
 
 // Start server
 server.listen(PORT, () => {
