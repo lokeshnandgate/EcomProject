@@ -32,8 +32,7 @@ const chatSchema = new mongoose.Schema({
   participants: [participantSchema],
   unreadCounts: [unreadCountSchema],
   lastMessage: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Message'
+    type: mongoose.Schema.Types.Mixed // or use a short summary like content & timestamp
   },
   isGroup: {
     type: Boolean,

@@ -18,7 +18,7 @@ const verifyToken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    console.log('Decoded token:', decoded); // For debugging only — remove in production
+    //console.log('Decoded token:', decoded); // For debugging only — remove in production
 
     let user;
     if (decoded.userType === 'User') {

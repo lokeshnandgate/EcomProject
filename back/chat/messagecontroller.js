@@ -14,7 +14,6 @@ exports.sendMessage = async (req, res) => {
       return res.status(400).json({ error: 'Chat ID and content or attachments are required' });
     }
 
-    // Check if chat exists and user is a participant
     const chat = await Chat.findOne({
       _id: chatId,
       'participants.participant': senderId
@@ -24,22 +23,45 @@ exports.sendMessage = async (req, res) => {
       return res.status(403).json({ error: 'You are not a participant in this chat' });
     }
 
-    // Create message
-    const message = new Message({
+    // Construct the new message object
+    const newMessage = {
       sender: senderId,
       senderModel,
       content,
-      chat: chatId,
       attachments,
-      replyTo
-    });
+      replyTo,
+      readBy: [{
+        reader: senderId,
+        readerModel: senderModel,
+        readAt: new Date()
+      }],
+      createdAt: new Date()
+    };
 
-    await message.save();
+    let messageThread = await Message.findOne({ chat: chatId });
 
-    // Update chat's last message
-    chat.lastMessage = message._id;
-    
-    // Increment unread counts for other participants
+    if (!messageThread) {
+      // Create new thread if none exists
+      messageThread = new Message({
+        chat: chatId,
+        messages: [newMessage]
+      });
+    } else {
+      // Add new message to existing thread
+      messageThread.messages.push(newMessage);
+    }
+
+    await messageThread.save();
+
+    const latestMessage = messageThread.messages[messageThread.messages.length - 1];
+
+    // Update chat with latest message info
+    chat.lastMessage = {
+      sender: senderId,
+      content,
+      timestamp: latestMessage.createdAt
+    };
+
     chat.unreadCounts.forEach(uc => {
       if (uc.participant.toString() !== senderId.toString()) {
         uc.count += 1;
@@ -48,24 +70,16 @@ exports.sendMessage = async (req, res) => {
 
     await chat.save();
 
-    // Populate message with sender info
-    const fullMessage = await Message.findById(message._id)
-      .populate('sender')
-      .populate({
-        path: 'replyTo',
-        populate: {
-          path: 'sender',
-          select: 'username profilePic'
-        }
-      });
-
-    // Emit to all participants via socket.io
+    // Emit message to all chat participants via Socket.IO
     const io = getIO();
     chat.participants.forEach(participant => {
-      io.to(participant.participant.toString()).emit('messageReceived', fullMessage);
+      io.to(participant.participant.toString()).emit('messageReceived', {
+        chatId,
+        message: latestMessage
+      });
     });
 
-    res.status(201).json(fullMessage);
+    res.status(201).json(latestMessage);
   } catch (error) {
     console.error('Error sending message:', error);
     res.status(500).json({ error: 'Failed to send message' });
@@ -121,7 +135,7 @@ exports.getMessages = async (req, res) => {
 // Mark messages as read
 exports.markAsRead = async (req, res) => {
   try {
-    const { chatId } = req.params;
+    const { chatId } = req.query;
     const userId = req.user.userId;
     const userModel = req.user.userType === 'User' ? 'User' : 'Business';
 
@@ -143,10 +157,17 @@ exports.markAsRead = async (req, res) => {
 
     // Reset unread count in chat
     const chat = await Chat.findById(chatId);
+    console.log(
+      'Chat before resetting unread count:', chat
+    );
+    if (!chat) {
+      return res.status(404).json({ error: 'Chat not found' });
+    }
+
     const unreadIndex = chat.unreadCounts.findIndex(
       uc => uc.participant.toString() === userId.toString()
     );
-    
+
     if (unreadIndex !== -1) {
       chat.unreadCounts[unreadIndex].count = 0;
       await chat.save();
@@ -166,6 +187,7 @@ exports.markAsRead = async (req, res) => {
     res.status(500).json({ error: 'Failed to mark messages as read' });
   }
 };
+
 
 // Delete a message (soft delete)
 exports.deleteMessage = async (req, res) => {
@@ -215,7 +237,7 @@ exports.deleteMessage = async (req, res) => {
 // Edit a message
 exports.editMessage = async (req, res) => {
   try {
-    const { messageId } = req.params;
+    const { messageId } = req.params;   // subdocument _id
     const { content } = req.body;
     const userId = req.user.userId;
 
@@ -223,32 +245,41 @@ exports.editMessage = async (req, res) => {
       return res.status(400).json({ error: 'Content is required' });
     }
 
-    // Find and update the message
-    const message = await Message.findOneAndUpdate(
+    // Find the message document containing this message and update subdocument fields
+    const updatedMessageDoc = await Message.findOneAndUpdate(
       {
-        _id: messageId,
-        sender: userId,
-        'deletedFor.user': { $ne: userId }
+        'messages._id': messageId,
+        'messages.sender': userId,
+        'messages.deletedFor.user': { $ne: userId }
       },
       {
-        content,
-        isEdited: true
+        $set: {
+          'messages.$.content': content,
+          'messages.$.isEdited': true
+        }
       },
       { new: true }
-    ).populate('sender');
+    );
 
-    if (!message) {
+    if (!updatedMessageDoc) {
       return res.status(404).json({ error: 'Message not found or you are not the sender' });
     }
 
+    // Extract the updated subdocument message by id
+    const editedMessage = updatedMessageDoc.messages.id(messageId);
+
+    if (!editedMessage) {
+      return res.status(404).json({ error: 'Edited message not found after update' });
+    }
+
     // Notify participants via socket.io
-    const chat = await Chat.findById(message.chat);
+    const chat = await Chat.findById(updatedMessageDoc.chat);
     const io = getIO();
     chat.participants.forEach(participant => {
-      io.to(participant.participant.toString()).emit('messageEdited', message);
+      io.to(participant.participant.toString()).emit('messageEdited', editedMessage);
     });
 
-    res.json(message);
+    res.json(editedMessage);
   } catch (error) {
     console.error('Error editing message:', error);
     res.status(500).json({ error: 'Failed to edit message' });

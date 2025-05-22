@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 
+// Schema for read receipts
 const readByRecipientSchema = new mongoose.Schema({
   reader: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
-    refPath: 'readBy.readerModel'
+    refPath: 'messages.readBy.readerModel'
   },
   readerModel: {
     type: String,
@@ -17,6 +18,7 @@ const readByRecipientSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+// Schema for attachments
 const attachmentSchema = new mongoose.Schema({
   url: String,
   fileType: String,
@@ -24,7 +26,8 @@ const attachmentSchema = new mongoose.Schema({
   size: Number
 }, { _id: false });
 
-const messageSchema = new mongoose.Schema({
+// Single message subdocument schema
+const messageSubSchema = new mongoose.Schema({
   sender: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
@@ -39,17 +42,12 @@ const messageSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  chat: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Chat',
-    required: true
-  },
   readBy: [readByRecipientSchema],
   attachments: [attachmentSchema],
   deletedFor: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      refPath: 'deletedFor.userModel'
+      refPath: 'userModel'
     },
     userModel: {
       type: String,
@@ -59,7 +57,7 @@ const messageSchema = new mongoose.Schema({
   reactions: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      refPath: 'reactions.userModel'
+      refPath: 'userModel'
     },
     userModel: {
       type: String,
@@ -74,12 +72,27 @@ const messageSchema = new mongoose.Schema({
   isEdited: {
     type: Boolean,
     default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
+}, { _id: true });
+
+// Main message thread schema
+const messageSchema = new mongoose.Schema({
+  chat: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Chat',
+    required: true,
+    unique: true
+  },
+  messages: [messageSubSchema]
 }, { timestamps: true });
 
 // Indexes
-messageSchema.index({ chat: 1, createdAt: -1 });
-messageSchema.index({ 'readBy.reader': 1 });
+messageSchema.index({ chat: 1 });
+messageSchema.index({ 'messages.readBy.reader': 1 });
 
 const Message = mongoose.model('Message', messageSchema);
 

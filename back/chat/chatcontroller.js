@@ -16,76 +16,71 @@ exports.createChat = async (req, res) => {
       return res.status(400).json({ error: 'Participants are required' });
     }
 
-    // For individual chat, check if chat already exists
-    if (!isGroup && participants.length === 1) {
-      const existingChat = await Chat.findOne({
-        isGroup: false,
-        participants: {
-          $all: [
-            { participant: userId, participantModel: userModel },
-            { participant: participants[0].participantId, participantModel: participants[0].participantType }
-          ],
-          $size: 2
-        }
-      });
-
-      if (existingChat) {
-        return res.status(200).json(existingChat);
-      }
-    }
-
-    // Prepare participants array
+    // Construct full participant list including the current user
     const participantsArray = [
-      { participant: userId, participantModel: userModel }
+      { participant: userId.toString(), participantModel: userModel }
     ];
 
-    // Validate and add other participants
     for (const p of participants) {
-      console.log('Checking participant:', p);
       if (!p || !p.participantId || !p.participantType) {
         return res.status(400).json({ error: 'Each participant must have participantId and participantType' });
       }
-    
+
       if (p.participantId.toString() === userId.toString()) continue;
-    
-      let userExists;
-      if (p.participantType === 'User') {
-        userExists = await User.findById(p.participantId);
-      } else {
-        userExists = await Business.findById(p.participantId);
-      }
-    
+
+      let userExists = p.participantType === 'User'
+        ? await User.findById(p.participantId)
+        : await Business.findById(p.participantId);
+
       if (!userExists) {
         return res.status(404).json({ error: `Participant ${p.participantId} not found` });
       }
-    
+
       participantsArray.push({
-        participant: p.participantId,
+        participant: p.participantId.toString(),
         participantModel: p.participantType
       });
     }
-    
 
-    // Create chat
+    // Sort participants for consistent comparison
+    const sortedParticipantKeys = participantsArray
+      .map(p => `${p.participant}-${p.participantModel}`)
+      .sort();
+
+    // Find existing chat with exact same participants and type
+    const existingChats = await Chat.find({ isGroup }).populate('participants.participant');
+
+    for (const chat of existingChats) {
+      const chatParticipantKeys = chat.participants
+        .map(p => `${p.participant._id.toString()}-${p.participantModel}`)
+        .sort();
+
+      if (
+        sortedParticipantKeys.length === chatParticipantKeys.length &&
+        sortedParticipantKeys.every((val, index) => val === chatParticipantKeys[index])
+      ) {
+        return res.status(200).json(chat);
+      }
+    }
+
+    // Create new chat
     const chat = new Chat({
       participants: participantsArray,
       isGroup,
       unreadCounts: participantsArray.map(p => ({
         participant: p.participant,
         count: 0
-      }))
+      })),
+      ...(isGroup && {
+        groupName,
+        groupDescription,
+        groupAdmin: userId,
+        groupAdminModel: userModel
+      })
     });
-
-    if (isGroup) {
-      chat.groupName = groupName;
-      chat.groupDescription = groupDescription;
-      chat.groupAdmin = userId;
-      chat.groupAdminModel = userModel;
-    }
 
     await chat.save();
 
-    // Populate participants before sending response
     const populatedChat = await Chat.findById(chat._id)
       .populate({
         path: 'participants.participant',
@@ -99,6 +94,7 @@ exports.createChat = async (req, res) => {
     res.status(500).json({ error: 'Failed to create chat' });
   }
 };
+
 
 // Get all chats for a user
 exports.getUserChats = async (req, res) => {
