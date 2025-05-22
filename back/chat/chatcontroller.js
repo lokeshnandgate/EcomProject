@@ -8,7 +8,7 @@ const mongoose = require('mongoose');
 // Create a new chat (individual or group)
 exports.createChat = async (req, res) => {
   try {
-    const { participants, isGroup = false, groupName, groupDescription } = req.body;
+    const { participants, isGroup = false, groupName, groupDescription, groupImage } = req.body;
     const userId = req.user.userId;
     const userModel = req.user.userType === 'User' ? 'User' : 'Business';
 
@@ -18,9 +18,14 @@ exports.createChat = async (req, res) => {
 
     // Construct full participant list including the current user
     const participantsArray = [
-      { participant: userId.toString(), participantModel: userModel }
+      { 
+        participant: userId, 
+        participantModel: userModel,
+        joinedAt: new Date()
+      }
     ];
 
+    // Validate and add other participants
     for (const p of participants) {
       if (!p || !p.participantId || !p.participantType) {
         return res.status(400).json({ error: 'Each participant must have participantId and participantType' });
@@ -28,27 +33,34 @@ exports.createChat = async (req, res) => {
 
       if (p.participantId.toString() === userId.toString()) continue;
 
-      let userExists = p.participantType === 'User'
-        ? await User.findById(p.participantId)
-        : await Business.findById(p.participantId);
+      let userExists;
+      if (p.participantType === 'User') {
+        userExists = await User.findById(p.participantId);
+      } else {
+        userExists = await Business.findById(p.participantId);
+      }
 
       if (!userExists) {
         return res.status(404).json({ error: `Participant ${p.participantId} not found` });
       }
 
       participantsArray.push({
-        participant: p.participantId.toString(),
-        participantModel: p.participantType
+        participant: p.participantId,
+        participantModel: p.participantType,
+        joinedAt: new Date()
       });
     }
 
     // Sort participants for consistent comparison
     const sortedParticipantKeys = participantsArray
-      .map(p => `${p.participant}-${p.participantModel}`)
+      .map(p => `${p.participant.toString()}-${p.participantModel}`)
       .sort();
 
     // Find existing chat with exact same participants and type
-    const existingChats = await Chat.find({ isGroup }).populate('participants.participant');
+    const existingChats = await Chat.find({ 
+      isGroup,
+      'deletedFor.user': { $ne: userId }
+    }).populate('participants.participant');
 
     for (const chat of existingChats) {
       const chatParticipantKeys = chat.participants
@@ -74,6 +86,7 @@ exports.createChat = async (req, res) => {
       ...(isGroup && {
         groupName,
         groupDescription,
+        groupImage,
         groupAdmin: userId,
         groupAdminModel: userModel
       })
@@ -81,12 +94,23 @@ exports.createChat = async (req, res) => {
 
     await chat.save();
 
+    // Populate the chat before returning
     const populatedChat = await Chat.findById(chat._id)
       .populate({
         path: 'participants.participant',
         select: 'username profilePic userType'
       })
-      .populate('lastMessage');
+      .populate({
+        path: 'lastMessage',
+        populate: {
+          path: 'sender',
+          select: 'username profilePic'
+        }
+      })
+      .populate({
+        path: 'groupAdmin',
+        select: 'username profilePic'
+      });
 
     res.status(201).json(populatedChat);
   } catch (error) {
@@ -94,7 +118,6 @@ exports.createChat = async (req, res) => {
     res.status(500).json({ error: 'Failed to create chat' });
   }
 };
-
 
 // Get all chats for a user
 exports.getUserChats = async (req, res) => {
@@ -110,7 +133,17 @@ exports.getUserChats = async (req, res) => {
         path: 'participants.participant',
         select: 'username profilePic userType'
       })
-      .populate('lastMessage')
+      .populate({
+        path: 'lastMessage',
+        populate: {
+          path: 'sender',
+          select: 'username profilePic'
+        }
+      })
+      .populate({
+        path: 'groupAdmin',
+        select: 'username profilePic'
+      })
       .sort({ updatedAt: -1 });
 
     res.json(chats);
@@ -128,14 +161,24 @@ exports.getChatDetails = async (req, res) => {
 
     const chat = await Chat.findOne({
       _id: chatId,
-      'participants.participant': userId
+      'participants.participant': userId,
+      'deletedFor.user': { $ne: userId }
     })
       .populate({
         path: 'participants.participant',
         select: 'username profilePic userType'
       })
-      .populate('lastMessage')
-      .populate('groupAdmin');
+      .populate({
+        path: 'lastMessage',
+        populate: {
+          path: 'sender replyTo',
+          select: 'username profilePic content'
+        }
+      })
+      .populate({
+        path: 'groupAdmin',
+        select: 'username profilePic'
+      });
 
     if (!chat) {
       return res.status(404).json({ error: 'Chat not found or access denied' });
@@ -159,26 +202,36 @@ exports.updateGroupChat = async (req, res) => {
     const chat = await Chat.findOne({
       _id: chatId,
       isGroup: true,
-      groupAdmin: userId
+      groupAdmin: userId,
+      'deletedFor.user': { $ne: userId }
     });
 
     if (!chat) {
       return res.status(403).json({ error: 'Only group admin can update group details' });
     }
 
-    if (groupName) chat.groupName = groupName;
-    if (groupDescription) chat.groupDescription = groupDescription;
-    if (groupImage) chat.groupImage = groupImage;
+    if (groupName !== undefined) chat.groupName = groupName;
+    if (groupDescription !== undefined) chat.groupDescription = groupDescription;
+    if (groupImage !== undefined) chat.groupImage = groupImage;
 
     await chat.save();
+
+    // Populate before sending response
+    const populatedChat = await Chat.findById(chat._id)
+      .populate({
+        path: 'participants.participant',
+        select: 'username profilePic'
+      })
+      .populate('lastMessage')
+      .populate('groupAdmin');
 
     // Notify participants via socket.io
     const io = getIO();
     chat.participants.forEach(participant => {
-      io.to(participant.participant.toString()).emit('groupUpdated', chat);
+      io.to(participant.participant.toString()).emit('groupUpdated', populatedChat);
     });
 
-    res.json(chat);
+    res.json(populatedChat);
   } catch (error) {
     console.error('Error updating group chat:', error);
     res.status(500).json({ error: 'Failed to update group chat' });
@@ -191,13 +244,13 @@ exports.addParticipants = async (req, res) => {
     const { chatId } = req.params;
     const { participants } = req.body;
     const userId = req.user.userId;
-    const userModel = req.user.userType === 'User' ? 'User' : 'Business';
 
     // Check if chat exists and is a group
     const chat = await Chat.findOne({
       _id: chatId,
       isGroup: true,
-      'participants.participant': userId
+      'participants.participant': userId,
+      'deletedFor.user': { $ne: userId }
     });
 
     if (!chat) {
@@ -209,8 +262,14 @@ exports.addParticipants = async (req, res) => {
       return res.status(403).json({ error: 'Only group admin can add participants' });
     }
 
+    const newParticipants = [];
+    
     // Validate and add new participants
     for (const p of participants) {
+      if (!p || !p.participantId || !p.participantType) {
+        continue;
+      }
+
       // Check if participant already exists
       const exists = chat.participants.some(
         participant => participant.participant.toString() === p.participantId.toString()
@@ -227,13 +286,14 @@ exports.addParticipants = async (req, res) => {
       }
 
       if (!userExists) {
-        return res.status(404).json({ error: `Participant ${p.participantId} not found` });
+        continue;
       }
 
       // Add participant
       chat.participants.push({
         participant: p.participantId,
-        participantModel: p.participantType
+        participantModel: p.participantType,
+        joinedAt: new Date()
       });
 
       // Add to unread counts
@@ -241,20 +301,39 @@ exports.addParticipants = async (req, res) => {
         participant: p.participantId,
         count: 0
       });
+
+      newParticipants.push({
+        participant: p.participantId,
+        participantModel: p.participantType
+      });
+    }
+
+    if (newParticipants.length === 0) {
+      return res.status(400).json({ error: 'No valid new participants to add' });
     }
 
     await chat.save();
+
+    // Populate before sending response
+    const populatedChat = await Chat.findById(chat._id)
+      .populate({
+        path: 'participants.participant',
+        select: 'username profilePic'
+      })
+      .populate('lastMessage')
+      .populate('groupAdmin');
 
     // Notify all participants via socket.io
     const io = getIO();
     chat.participants.forEach(participant => {
       io.to(participant.participant.toString()).emit('participantsAdded', {
         chatId,
-        newParticipants: participants
+        chat: populatedChat,
+        newParticipants
       });
     });
 
-    res.json(chat);
+    res.json(populatedChat);
   } catch (error) {
     console.error('Error adding participants:', error);
     res.status(500).json({ error: 'Failed to add participants' });
@@ -271,7 +350,8 @@ exports.removeParticipant = async (req, res) => {
     const chat = await Chat.findOne({
       _id: chatId,
       isGroup: true,
-      'participants.participant': userId
+      'participants.participant': userId,
+      'deletedFor.user': { $ne: userId }
     });
 
     if (!chat) {
@@ -293,6 +373,7 @@ exports.removeParticipant = async (req, res) => {
     }
 
     // Remove participant
+    const removedParticipant = chat.participants[participantIndex];
     chat.participants.splice(participantIndex, 1);
 
     // Remove from unread counts
@@ -303,7 +384,7 @@ exports.removeParticipant = async (req, res) => {
       chat.unreadCounts.splice(unreadIndex, 1);
     }
 
-    // If group admin is leaving, assign new admin
+    // If group admin is leaving or being removed, assign new admin if possible
     if (chat.groupAdmin.toString() === participantId && chat.participants.length > 0) {
       chat.groupAdmin = chat.participants[0].participant;
       chat.groupAdminModel = chat.participants[0].participantModel;
@@ -311,19 +392,32 @@ exports.removeParticipant = async (req, res) => {
 
     await chat.save();
 
+    // Populate before sending response
+    const populatedChat = await Chat.findById(chat._id)
+      .populate({
+        path: 'participants.participant',
+        select: 'username profilePic'
+      })
+      .populate('lastMessage')
+      .populate('groupAdmin');
+
     // Notify all participants via socket.io
     const io = getIO();
     chat.participants.forEach(participant => {
       io.to(participant.participant.toString()).emit('participantRemoved', {
         chatId,
+        chat: populatedChat,
         removedParticipantId: participantId
       });
     });
 
     // Notify removed participant
-    io.to(participantId).emit('removedFromGroup', { chatId });
+    io.to(participantId).emit('removedFromGroup', { 
+      chatId,
+      removedBy: userId 
+    });
 
-    res.json(chat);
+    res.json(populatedChat);
   } catch (error) {
     console.error('Error removing participant:', error);
     res.status(500).json({ error: 'Failed to remove participant' });
@@ -340,7 +434,8 @@ exports.leaveGroup = async (req, res) => {
     const chat = await Chat.findOne({
       _id: chatId,
       isGroup: true,
-      'participants.participant': userId
+      'participants.participant': userId,
+      'deletedFor.user': { $ne: userId }
     });
 
     if (!chat) {
@@ -367,7 +462,7 @@ exports.leaveGroup = async (req, res) => {
       chat.unreadCounts.splice(unreadIndex, 1);
     }
 
-    // If group admin is leaving, assign new admin
+    // If group admin is leaving, assign new admin if possible
     if (chat.groupAdmin.toString() === userId.toString() && chat.participants.length > 0) {
       chat.groupAdmin = chat.participants[0].participant;
       chat.groupAdminModel = chat.participants[0].participantModel;
@@ -375,11 +470,21 @@ exports.leaveGroup = async (req, res) => {
 
     await chat.save();
 
+    // Populate before sending response
+    const populatedChat = await Chat.findById(chat._id)
+      .populate({
+        path: 'participants.participant',
+        select: 'username profilePic'
+      })
+      .populate('lastMessage')
+      .populate('groupAdmin');
+
     // Notify remaining participants via socket.io
     const io = getIO();
     chat.participants.forEach(participant => {
       io.to(participant.participant.toString()).emit('participantLeft', {
         chatId,
+        chat: populatedChat,
         leftParticipantId: userId
       });
     });
@@ -410,7 +515,11 @@ exports.deleteChat = async (req, res) => {
 
     // Add user to deletedFor array
     if (!chat.deletedFor.some(df => df.user.toString() === userId.toString())) {
-      chat.deletedFor.push({ user: userId, userModel });
+      chat.deletedFor.push({ 
+        user: userId, 
+        userModel,
+        deletedAt: new Date()
+      });
       await chat.save();
     }
 
@@ -423,6 +532,17 @@ exports.deleteChat = async (req, res) => {
       await Message.deleteMany({ chat: chatId });
       await Chat.findByIdAndDelete(chatId);
     }
+
+    // Notify other participants via socket.io
+    const io = getIO();
+    chat.participants.forEach(participant => {
+      if (participant.participant.toString() !== userId.toString()) {
+        io.to(participant.participant.toString()).emit('chatDeleted', { 
+          chatId,
+          deletedBy: userId
+        });
+      }
+    });
 
     res.json({ success: true });
   } catch (error) {
