@@ -1,200 +1,119 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { AppThunk } from '../store/store';
-import axiosInstance from '../../../utils/auth';
-
-// Types
-interface Participant {
-  _id: string;
-  participant: {
-    _id: string;
-    username: string;
-    profilePic?: string;
-    userType?: string;
-  };
-  participantModel: string;
-}
-
-interface Reaction {
-  user: string;
-  userModel: string;
-  emoji: string;
-  reactedAt: string;
-}
-
-interface Message {
-  _id: string;
-  sender: {
-    _id: string;
-    username: string;
-    profilePic?: string;
-  };
-  senderModel: string;
-  content: string;
-  attachments: Array<{
-    url: string;
-    fileType: string;
-  }>;
-  readBy: Array<{
-    reader: string;
-    readerModel: string;
-    readAt: string;
-  }>;
-  reactions: Reaction[];
-  replyTo?: Message;
-  isEdited?: boolean;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-interface Chat {
-  _id: string;
-  participants: Participant[];
-  lastMessage?: Message;
-  isGroup: boolean;
-  groupName?: string;
-  groupDescription?: string;
-  groupAdmin?: string;
-  groupAdminModel?: string;
-  groupImage?: string;
-  unreadCounts: Array<{
-    participant: string;
-    count: number;
-  }>;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface ChatState {
-  chats: Chat[];
-  currentChat: Chat | null;
-  messages: Message[];
+  chats: any[];
+  currentChat: any | null;
+  messages: any[];
+  searchResults: {
+    users: any[];
+    businesses: any[];
+  };
   loading: boolean;
   error: string | null;
-  success: boolean;
+  currentUser: any | null; // Added currentUser property
+  
 }
 
 const initialState: ChatState = {
   chats: [],
   currentChat: null,
   messages: [],
-  loading: false,
+  searchResults: {
+    users: [],
+    businesses: []
+  },
+  loading: false, // Initialize loading in the initial state
   error: null,
-  success: false,
+  currentUser: null // Initialize currentUser in the initial state
 };
 
 const chatSlice = createSlice({
   name: 'chat',
   initialState,
   reducers: {
-    // General state management
-    startLoading(state) {
-      state.loading = true;
-      state.error = null;
-      state.success = false;
-    },
-    setError(state, action: PayloadAction<string>) {
-      state.loading = false;
-      state.error = action.payload;
-      state.success = false;
-    },
-    resetSuccess(state) {
-      state.success = false;
-    },
-
-    // Chat related reducers
-    getChatsSuccess(state, action: PayloadAction<Chat[]>) {
+    setChats: (state, action: PayloadAction<any[]>) => {
       state.chats = action.payload;
-      state.loading = false;
     },
-    getChatDetailsSuccess(state, action: PayloadAction<Chat>) {
+    setCurrentChat: (state, action: PayloadAction<any>) => {
       state.currentChat = action.payload;
-      state.loading = false;
     },
-    createChatSuccess(state, action: PayloadAction<Chat>) {
+    addNewChat: (state, action: PayloadAction<any>) => {
       state.chats.unshift(action.payload);
-      state.loading = false;
-      state.success = true;
     },
-    updateGroupChatSuccess(state, action: PayloadAction<Chat>) {
-      const index = state.chats.findIndex(chat => chat._id === action.payload._id);
-      if (index !== -1) {
-        state.chats[index] = action.payload;
+    updateChatLastMessage: (state, action: PayloadAction<{ chatId: string; lastMessage: any }>) => {
+      const { chatId, lastMessage } = action.payload;
+      const chatIndex = state.chats.findIndex(chat => chat._id === chatId);
+      if (chatIndex !== -1) {
+        state.chats[chatIndex].lastMessage = lastMessage;
+        // Move to top
+        const chat = state.chats.splice(chatIndex, 1)[0];
+        state.chats.unshift(chat);
       }
-      if (state.currentChat?._id === action.payload._id) {
-        state.currentChat = action.payload;
+      if (state.currentChat?._id === chatId) {
+        state.currentChat.lastMessage = lastMessage;
       }
-      state.loading = false;
-      state.success = true;
     },
-    deleteChatSuccess(state, action: PayloadAction<string>) {
-      state.chats = state.chats.filter(chat => chat._id !== action.payload);
-      if (state.currentChat?._id === action.payload) {
-        state.currentChat = null;
-      }
-      state.loading = false;
-      state.success = true;
-    },
-
-    // Message related reducers
-    getMessagesSuccess(state, action: PayloadAction<Message[]>) {
-      state.messages = action.payload;
-      state.loading = false;
-    },
-    sendMessageSuccess(state, action: PayloadAction<Message>) {
-      state.messages.push(action.payload);
-      state.loading = false;
-      state.success = true;
-    },
-    markAsReadSuccess(state, action: PayloadAction<{chatId: string, userId: string}>) {
-      const chatIndex = state.chats.findIndex(chat => chat._id === action.payload.chatId);
+    updateChatUnreadCount: (state, action: PayloadAction<{ chatId: string; count: number }>) => {
+      const { chatId, count } = action.payload;
+      const chatIndex = state.chats.findIndex(chat => chat._id === chatId);
       if (chatIndex !== -1) {
         const unreadIndex = state.chats[chatIndex].unreadCounts.findIndex(
-          uc => uc.participant === action.payload.userId
+          (uc: any) => uc.participant.toString() === state.currentUser?._id.toString()
         );
         if (unreadIndex !== -1) {
-          state.chats[chatIndex].unreadCounts[unreadIndex].count = 0;
+          state.chats[chatIndex].unreadCounts[unreadIndex].count = count;
         }
       }
-      state.loading = false;
     },
-    deleteMessageSuccess(state, action: PayloadAction<{chatId: string, messageId: string}>) {
-      state.messages = state.messages.filter(msg => msg._id !== action.payload.messageId);
-      state.loading = false;
-      state.success = true;
+    setMessages: (state, action: PayloadAction<any[]>) => {
+      state.messages = action.payload;
     },
-    editMessageSuccess(state, action: PayloadAction<Message>) {
-      const index = state.messages.findIndex(msg => msg._id === action.payload._id);
-      if (index !== -1) {
-        state.messages[index] = action.payload;
+    addMessages: (state, action: PayloadAction<any[]>) => {
+      state.messages = [...action.payload, ...state.messages];
+    },
+    addMessage: (state, action: PayloadAction<any>) => {
+      state.messages.push(action.payload);
+      if (state.currentChat?._id === action.payload.chat) {
+        state.currentChat.lastMessage = action.payload;
       }
-      state.loading = false;
-      state.success = true;
     },
-    reactToMessageSuccess(state, action: PayloadAction<{messageId: string, reactions: Reaction[]}>) {
-      const index = state.messages.findIndex(msg => msg._id === action.payload.messageId);
-      if (index !== -1) {
-        state.messages[index].reactions = action.payload.reactions;
+    updateMessage: (state, action: PayloadAction<any>) => {
+      const messageIndex = state.messages.findIndex(msg => msg._id === action.payload._id);
+      if (messageIndex !== -1) {
+        state.messages[messageIndex] = action.payload;
       }
-      state.loading = false;
     },
-  },
+    deleteMessage: (state, action: PayloadAction<string>) => {
+      state.messages = state.messages.filter(msg => msg._id !== action.payload);
+    },
+    setSearchResults: (state, action: PayloadAction<{ users: any[]; businesses: any[] }>) => {
+      state.searchResults = action.payload;
+    },
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.loading = action.payload;
+    },
+    setError: (state, action: PayloadAction<string | null>) => {
+      state.error = action.payload;
+    },
+    resetChatState: () => initialState
+  }
 });
 
 export const {
-  startLoading,
+  setChats,
+  setCurrentChat,
+  addNewChat,
+  updateChatLastMessage,
+  updateChatUnreadCount,
+  setMessages,
+  addMessages,
+  addMessage,
+  updateMessage,
+  deleteMessage,
+  setSearchResults,
+  setLoading,
   setError,
-  resetSuccess,
-  getChatsSuccess,
-  getChatDetailsSuccess,
-  createChatSuccess,
-  updateGroupChatSuccess,
-  deleteChatSuccess,
-  getMessagesSuccess,
-  sendMessageSuccess,
-  markAsReadSuccess,
-  deleteMessageSuccess,
-  editMessageSuccess,
-  reactToMessageSuccess,
+  resetChatState
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

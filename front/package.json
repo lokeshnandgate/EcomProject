@@ -19,6 +19,7 @@
     "@tailwindcss/postcss": "^4.1.4",
     "antd": "^5.24.9",
     "axios": "^1.9.0",
+    "date-fns": "^4.1.0",
     "emoji-mart": "^5.6.0",
     "framer-motion": "^12.9.7",
     "lucide-react": "^0.503.0",
@@ -32,6 +33,7 @@
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
+    "@types/date-fns": "^2.5.3",
     "@types/emoji-mart": "^3.0.14",
     "@types/node": "22.14.1",
     "@types/react": "^19.1.3",

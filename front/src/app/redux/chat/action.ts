@@ -1,240 +1,208 @@
-import { AppThunk } from '../store/store';
-import {
-  startLoading,
-  setError,
-  getChatsSuccess,
-  getChatDetailsSuccess,
-  createChatSuccess,
-  updateGroupChatSuccess,
-  deleteChatSuccess,
-  getMessagesSuccess,
-  sendMessageSuccess,
-  markAsReadSuccess,
-  deleteMessageSuccess,
-  editMessageSuccess,
-  reactToMessageSuccess,
-} from './slice';
 import axiosInstance from '../../../utils/auth';
+import { AppThunk } from '../store/store';
+import { 
+  setChats, 
+  setCurrentChat, 
+  addNewChat, 
+  updateChatLastMessage, 
+  updateChatUnreadCount, 
+  addMessage, 
+  updateMessage, 
+  deleteMessage, 
+  setMessages, 
+  setSearchResults 
+} from './slice';
 
 // Chat Actions
+interface Participant {
+  id: string;
+  name: string;
+  // Add other participant properties if needed
+}
+
+interface CreateChatPayload {
+  isGroup: boolean;
+  groupName?: string;
+  participants: Participant[];
+}
+
+export const createChat = (payload: CreateChatPayload): AppThunk => async (dispatch) => {
+  try {
+    const response = await axiosInstance.post('/api/chat/chats/createchat', {
+      participants: payload.participants,
+      isGroup: payload.isGroup,
+      ...(payload.isGroup && { groupName: payload.groupName })
+    });
+    dispatch(addNewChat(response.data));
+    return response.data;
+  } catch (error) {
+    console.error('Error creating chat:', error);
+    throw error;
+  }
+};
+
 export const fetchUserChats = (): AppThunk => async (dispatch) => {
   try {
-    dispatch(startLoading());
     const response = await axiosInstance.get('/api/chat/chats/getuserchats');
-    dispatch(getChatsSuccess(response.data));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to fetch chats';
-    dispatch(setError(errorMessage));
+    dispatch(setChats(response.data));
+  } catch (error) {
+    console.error('Error fetching chats:', error);
   }
 };
 
 export const fetchChatDetails = (chatId: string): AppThunk => async (dispatch) => {
   try {
-    dispatch(startLoading());
     const response = await axiosInstance.get(`/api/chat/chats/${chatId}/getchatdetail`);
-    dispatch(getChatDetailsSuccess(response.data));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to fetch chat details';
-    dispatch(setError(errorMessage));
+    dispatch(setCurrentChat(response.data));
+  } catch (error) {
+    console.error('Error fetching chat details:', error);
   }
 };
 
-export const createChat = (
-  participants: Array<{ participantId: string; participantType: string }>,
-  isGroup = false,
-  groupName?: string,
-  groupDescription?: string,
-  groupImage?: string
-): AppThunk => async (dispatch) => {
+export const updateGroupDetails = (chatId: string, updates: any): AppThunk => async (dispatch) => {
   try {
-    dispatch(startLoading());
-    const response = await axiosInstance.post('/api/chat/chats/createchat', {
-      participants,
-      isGroup,
-      groupName,
-      groupDescription,
-      groupImage,
-    });
-    dispatch(createChatSuccess(response.data));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to create chat';
-    dispatch(setError(errorMessage));
+    const response = await axiosInstance.put(`/api/chat/chats/${chatId}/updategroupchat`, updates);
+    dispatch(setCurrentChat(response.data));
+    return response.data;
+  } catch (error) {
+    console.error('Error updating group:', error);
+    throw error;
   }
 };
 
-export const updateGroupChat = (
-  chatId: string,
-  groupName?: string,
-  groupDescription?: string,
-  groupImage?: string
-): AppThunk => async (dispatch) => {
+export const addParticipants = (chatId: string, participants: any[]): AppThunk => async (dispatch) => {
   try {
-    dispatch(startLoading());
-    const response = await axiosInstance.put(`/api/chat/chats/${chatId}/updategroupchat`, {
-      groupName,
-      groupDescription,
-      groupImage,
-    });
-    dispatch(updateGroupChatSuccess(response.data));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to update group chat';
-    dispatch(setError(errorMessage));
+    const response = await axiosInstance.post(`/api/chat/chats/${chatId}/addparticipants`, { participants });
+    dispatch(setCurrentChat(response.data));
+    return response.data;
+  } catch (error) {
+    console.error('Error adding participants:', error);
+    throw error;
   }
 };
 
-export const addParticipants = (
-  chatId: string,
-  participants: Array<{ participantId: string; participantType: string }>
-): AppThunk => async (dispatch) => {
+export const removeParticipant = (chatId: string, participantId: string): AppThunk => async (dispatch) => {
   try {
-    dispatch(startLoading());
-    const response = await axiosInstance.post(`/api/chat/chats/${chatId}/addparticipants`, {
-      participants,
-    });
-    dispatch(updateGroupChatSuccess(response.data));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to add participants';
-    dispatch(setError(errorMessage));
-  }
-};
-
-export const removeParticipant = (
-  chatId: string,
-  participantId: string
-): AppThunk => async (dispatch) => {
-  try {
-    dispatch(startLoading());
-    const response = await axiosInstance.delete(
-      `/api/chat/chats/${chatId}/participants/${participantId}/removeparticipant`
-    );
-    dispatch(updateGroupChatSuccess(response.data));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to remove participant';
-    dispatch(setError(errorMessage));
+    const response = await axiosInstance.delete(`/api/chat/chats/${chatId}/participants/${participantId}/removeparticipant`);
+    dispatch(setCurrentChat(response.data));
+    return response.data;
+  } catch (error) {
+    console.error('Error removing participant:', error);
+    throw error;
   }
 };
 
 export const leaveGroup = (chatId: string): AppThunk => async (dispatch) => {
   try {
-    dispatch(startLoading());
     await axiosInstance.post(`/api/chat/chats/${chatId}/leavegroup`);
-    dispatch(deleteChatSuccess(chatId));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to leave group';
-    dispatch(setError(errorMessage));
+    // Remove the chat from the list after leaving
+    dispatch(fetchUserChats());
+  } catch (error) {
+    console.error('Error leaving group:', error);
+    throw error;
   }
 };
 
 export const deleteChat = (chatId: string): AppThunk => async (dispatch) => {
   try {
-    dispatch(startLoading());
     await axiosInstance.delete(`/api/chat/chats/${chatId}/deletechat`);
-    dispatch(deleteChatSuccess(chatId));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to delete chat';
-    dispatch(setError(errorMessage));
+    // Remove the chat from the list after deletion
+    dispatch(fetchUserChats());
+  } catch (error) {
+    console.error('Error deleting chat:', error);
+    throw error;
+  }
+};
+
+export const searchUsersAndBusinesses = (query: string): AppThunk => async (dispatch) => {
+  try {
+    const response = await axiosInstance.get(`/api/chat/chats/search/${query}`);
+    dispatch(setSearchResults(response.data));
+    return response.data;
+  } catch (error) {
+    console.error('Error searching:', error);
+    throw error;
   }
 };
 
 // Message Actions
-export const fetchMessages = (
-  chatId: string,
-  page = 1,
-  limit = 20
-): AppThunk => async (dispatch) => {
+export const sendMessage = (chatId: string, content: string, attachments: any[] = [], replyTo?: string): AppThunk => async (dispatch) => {
   try {
-    dispatch(startLoading());
-    const response = await axiosInstance.get(
-      `/api/chat/messages/${chatId}/getmessage?page=${page}&limit=${limit}`
-    );
-    dispatch(getMessagesSuccess(response.data));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to fetch messages';
-    dispatch(setError(errorMessage));
-  }
-};
-
-export const sendMessage = (
-  chatId: string,
-  content: string,
-  attachments: any[] = [],
-  replyTo?: string
-): AppThunk => async (dispatch) => {
-  try {
-    dispatch(startLoading());
     const response = await axiosInstance.post('/api/chat/messages/sendmessage', {
       chatId,
       content,
       attachments,
-      replyTo,
+      replyTo
     });
-    dispatch(sendMessageSuccess(response.data));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to send message';
-    dispatch(setError(errorMessage));
-  }
-};
-
-export const markMessagesAsRead = (chatId: string): AppThunk => async (dispatch, getState) => {
-  try {
-    if (!chatId) throw new Error("Chat ID is required");
-    
-    dispatch(startLoading());
-    const userId = getState().user?._id;
-    
-    // Send chatId in the request body instead of URL
-    await axiosInstance.post('/api/chat/messages/mark-as-read', { chatId });
-    
-    if (userId) {
-      dispatch(markAsReadSuccess({chatId, userId}));
-    }
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to mark messages as read';
-    dispatch(setError(errorMessage));
-  }
-};
-export const deleteMessage = (messageId: string, chatId: string): AppThunk => async (dispatch) => {
-  try {
-    dispatch(startLoading());
-    await axiosInstance.delete(`/api/chat/messages/${messageId}/deletemessage`);
-    dispatch(deleteMessageSuccess({chatId, messageId}));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to delete message';
-    dispatch(setError(errorMessage));
-  }
-};
-
-export const editMessage = (
-  messageId: string,
-  content: string
-): AppThunk => async (dispatch) => {
-  try {
-    dispatch(startLoading());
-    const response = await axiosInstance.put(`/api/chat/messages/${messageId}/editmessage`, {
-      content,
-    });
-    dispatch(editMessageSuccess(response.data));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to edit message';
-    dispatch(setError(errorMessage));
-  }
-};
-
-export const reactToMessage = (
-  messageId: string,
-  emoji: string
-): AppThunk => async (dispatch) => {
-  try {
-    dispatch(startLoading());
-    const response = await axiosInstance.post(`/api/chat/messages/${messageId}/reactmessage`, {
-      emoji,
-    });
-    dispatch(reactToMessageSuccess({
-      messageId,
-      reactions: response.data.reactions,
+    dispatch(addMessage(response.data));
+    dispatch(updateChatLastMessage({
+      chatId,
+      lastMessage: response.data
     }));
-  } catch (err) {
-    const errorMessage = (err as any).response?.data?.error || 'Failed to react to message';
-    dispatch(setError(errorMessage));
+    return response.data;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw error;
   }
 };
+
+export const fetchMessages = (chatId: string, page: number = 1, limit: number = 20): AppThunk => async (dispatch) => {
+  try {
+    const response = await axiosInstance.get(`/api/chat/messages/${chatId}/getmessage`, {
+      params: { page, limit }
+    });
+    if (page === 1) {
+      dispatch(setMessages(response.data));
+    } else {
+      dispatch(addMessage(response.data));
+    }
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    throw error;
+  }
+};
+
+export const markMessagesAsRead = (chatId: string): AppThunk => async (dispatch) => {
+  try {
+    await axiosInstance.post('/api/chat/messages/mark-as-read', { chatId });
+    dispatch(updateChatUnreadCount({ chatId, count: 0 }));
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+    throw error;
+  }
+};
+
+export const editMessage = (messageId: string, content: string): AppThunk => async (dispatch) => {
+  try {
+    const response = await axiosInstance.put(`/api/chat/messages/${messageId}/editmessage`, { content });
+    dispatch(updateMessage(response.data));
+    return response.data;
+  } catch (error) {
+    console.error('Error editing message:', error);
+    throw error;
+  }
+};
+
+export const removeMessage = (messageId: string): AppThunk => async (dispatch) => {
+  try {
+    await axiosInstance.delete(`/api/chat/messages/${messageId}/deletemessage`);
+    dispatch(deleteMessage(messageId));
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    throw error;
+  }
+};
+
+export const reactToMessage = (messageId: string, emoji: string): AppThunk => async (dispatch) => {
+  try {
+    const response = await axiosInstance.post(`/api/chat/messages/${messageId}/reactmessage`, { emoji });
+    dispatch(updateMessage(response.data));
+    return response.data;
+  } catch (error) {
+    console.error('Error reacting to message:', error);
+    throw error;
+  }
+};
+
+export { deleteMessage };
