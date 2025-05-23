@@ -76,6 +76,7 @@ const chatSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
+
 // Indexes
 chatSchema.index({ 'participants.participant': 1 });
 chatSchema.index({ updatedAt: -1 });

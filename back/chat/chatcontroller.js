@@ -550,3 +550,39 @@ exports.deleteChat = async (req, res) => {
     res.status(500).json({ error: 'Failed to delete chat' });
   }
 };
+
+//search for users and business
+exports.searchUsersAndBusiness = async (req, res) => {
+  try {
+    const { query } = req.query;
+    const userId = req.user.userId;
+
+    // Validate query
+    if (!query || query.trim() === '') {
+      return res.status(400).json({ error: 'Query is required' });
+    }
+
+    // Search for users
+    const users = await User.find({
+      $or: [
+        { username: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } }
+      ],
+      _id: { $ne: userId }
+    }).select('username profilePic userType');
+
+    // Search for businesses
+    const businesses = await Business.find({
+      $or: [
+        { businessName: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } }
+      ],
+      _id: { $ne: userId }
+    }).select('businessName profilePic businessType');
+
+    res.json({ users, businesses });
+  } catch (error) {
+    console.error('Error searching users and businesses:', error);
+    res.status(500).json({ error: 'Failed to search users and businesses' });
+  }
+};

@@ -175,15 +175,16 @@ export const sendMessage = (
   }
 };
 
-export const markMessagesAsRead = (chatId: string, messageId?: string): AppThunk => async (dispatch, getState) => {
+export const markMessagesAsRead = (chatId: string): AppThunk => async (dispatch, getState) => {
   try {
+    if (!chatId) throw new Error("Chat ID is required");
+    
     dispatch(startLoading());
     const userId = getState().user?._id;
-    if (messageId) {
-      await axiosInstance.post(`/api/chat/messages/${messageId}/readmessage`, { chatId });
-    } else {
-      await axiosInstance.post(`/api/chat/messages/${chatId}/readmessage`);
-    }
+    
+    // Send chatId in the request body instead of URL
+    await axiosInstance.post('/api/chat/messages/mark-as-read', { chatId });
+    
     if (userId) {
       dispatch(markAsReadSuccess({chatId, userId}));
     }
@@ -192,7 +193,6 @@ export const markMessagesAsRead = (chatId: string, messageId?: string): AppThunk
     dispatch(setError(errorMessage));
   }
 };
-
 export const deleteMessage = (messageId: string, chatId: string): AppThunk => async (dispatch) => {
   try {
     dispatch(startLoading());
