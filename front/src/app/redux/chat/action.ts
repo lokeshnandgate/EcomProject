@@ -12,35 +12,53 @@ import {
   setMessages, 
   setSearchResults 
 } from './slice';
+import axios from 'axios';
 
-// Chat Actions
 interface Participant {
-  id: string;
-  name: string;
-  // Add other participant properties if needed
+  participantId: string;
+  participantType: 'User' | 'Business';
 }
 
 interface CreateChatPayload {
-  isGroup: boolean;
-  groupName?: string;
   participants: Participant[];
+  isGroup?: boolean;
+  groupName?: string;
+  groupDescription?: string;
+  groupImage?: string;
 }
 
 export const createChat = (payload: CreateChatPayload): AppThunk => async (dispatch) => {
   try {
-    const response = await axiosInstance.post('/api/chat/chats/createchat', {
-      participants: payload.participants,
-      isGroup: payload.isGroup,
-      ...(payload.isGroup && { groupName: payload.groupName })
-    });
+    // The backend expects an array of objects with participantId and participantType
+    const requestPayload = {
+      participants: payload.participants.map(p => ({
+        participantId: p.participantId,
+        participantType: p.participantType
+      })),
+      isGroup: payload.isGroup || false,
+      ...(payload.isGroup && {
+        groupName: payload.groupName,
+        groupDescription: payload.groupDescription,
+        groupImage: payload.groupImage
+      })
+    };
+
+    console.log('Sending create chat request with payload:', requestPayload);
+
+    const response = await axiosInstance.post('/api/chat/chats/createchat', requestPayload);
+    
     dispatch(addNewChat(response.data));
     return response.data;
   } catch (error) {
-    console.error('Error creating chat:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Error response data:', error.response?.data);
+    }
+    if (axios.isAxiosError(error)) {
+      console.error('Server error response:', error.response?.data);
+    }
     throw error;
   }
 };
-
 export const fetchUserChats = (): AppThunk => async (dispatch) => {
   try {
     const response = await axiosInstance.get('/api/chat/chats/getuserchats');
@@ -116,7 +134,10 @@ export const deleteChat = (chatId: string): AppThunk => async (dispatch) => {
 
 export const searchUsersAndBusinesses = (query: string): AppThunk => async (dispatch) => {
   try {
-    const response = await axiosInstance.get(`/api/chat/chats/search/${query}`);
+    const response = await axiosInstance.get(`/api/chat/chats/search/:`, {
+      params: { query }
+    });
+    console.log(response.data,'response.data');
     dispatch(setSearchResults(response.data));
     return response.data;
   } catch (error) {
@@ -141,8 +162,16 @@ export const sendMessage = (chatId: string, content: string, attachments: any[] 
     }));
     return response.data;
   } catch (error) {
-    console.error('Error sending message:', error);
-    throw error;
+    if (axios.isAxiosError(error)) {
+
+    } else {
+      if (error instanceof Error) {
+        console.error('Unexpected error:', error.message || error.toString());
+      } else {
+        console.error('Unexpected error:', error);
+      }
+    }
+    throw new Error('Failed to send the message. Please try again later.');
   }
 };
 
@@ -165,8 +194,12 @@ export const fetchMessages = (chatId: string, page: number = 1, limit: number = 
 
 export const markMessagesAsRead = (chatId: string): AppThunk => async (dispatch) => {
   try {
-    await axiosInstance.post('/api/chat/messages/mark-as-read', { chatId });
-    dispatch(updateChatUnreadCount({ chatId, count: 0 }));
+    const response = await axiosInstance.post('/api/chat/messages/mark-as-read', { chatId });
+    if (response.status === 200) {
+      dispatch(updateChatUnreadCount({ chatId, count: 0 }));
+    } else {
+      console.error('Unexpected response:', response);
+    }
   } catch (error) {
     console.error('Error marking messages as read:', error);
     throw error;

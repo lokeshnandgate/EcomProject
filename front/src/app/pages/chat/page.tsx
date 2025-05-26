@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { use, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
   fetchUserChats, 
@@ -17,6 +17,7 @@ import {
   reactToMessage,
   deleteMessage
 } from '../../redux/chat/action';
+import SearchResults from '../../redux/chat/slice'
 import { RootState, AppDispatch } from '../../redux/store/store';
 import { io, Socket } from 'socket.io-client';
 
@@ -33,6 +34,13 @@ const ChatPage: React.FC = () => {
   const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const searchData = useSelector((state: RootState) => state.chat.searchResults);
+
+  useEffect(() => {
+    if (!searchQuery) {
+      dispatch(searchUsersAndBusinesses(searchQuery));
+    }
+  },[]);
 
   // Initialize socket connection
   useEffect(() => {
@@ -142,6 +150,17 @@ const ChatPage: React.FC = () => {
       setSearchQuery('');
   }
 
+  // make a method 
+  const searchUser = (query: string) => {
+    setSearchQuery(query);
+    if (query) {
+      dispatch(searchUsersAndBusinesses(query));
+    } else {
+      // Reset search results if query is empty
+      setSelectedUsers([]);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
@@ -161,10 +180,12 @@ const ChatPage: React.FC = () => {
 
         {/* Search */}
         <div className="p-3 border-b border-gray-200">
-          <div className="relative">
+            <div className="relative">
             <input
               type="text"
               placeholder="Search chats..."
+              value={searchQuery}
+              onChange={(e) => searchUser(e.target.value)}
               className="w-full p-2 pl-10 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <svg
@@ -175,20 +196,116 @@ const ChatPage: React.FC = () => {
               xmlns="http://www.w3.org/2000/svg"
             >
               <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               ></path>
             </svg>
-          </div>
+            {searchQuery && (
+              <div className="absolute mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+              {searchData.users.length > 0 || searchData.businesses.length > 0 ? (
+                <>
+                {searchData.users.map((user) => (
+                  <div
+                  key={user._id}
+                  onClick={() => {
+                    const participants = [{ participantId: user._id, participantType: 'User' }];
+                    dispatch(createChat({ 
+                      participants: participants.map(p => ({
+                        participantId: p.participantId,
+                        participantType: p.participantType,
+                      })), 
+                      isGroup: false 
+                    }));
+                    setSearchQuery('');
+                  }}
+                  className="flex items-center p-2 hover:bg-gray-100 cursor-pointer"
+                  >
+                  <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center mr-2">
+                    {user.profilePic ? (
+                    <img
+                      src={user.profilePic}
+                      alt={user.username}
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                    ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-gray-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    )}
+                  </div>
+                  <span className="text-sm">{user.username}</span>
+                  </div>
+                ))}
+                {searchData.businesses.map((business) => (
+                  <div
+                  key={business._id}
+                  onClick={() => {
+                    const participants = [{ participantId: business._id, participantType: 'Business' }];
+                    dispatch(createChat({ 
+                      participants: participants.map(p => ({
+                        id: p.participantId,
+                        name: p.participantType, // Adjust this if `name` should be different
+                      })), 
+                      isGroup: false 
+                    }));
+                    setSearchQuery('');
+                  }}
+                  className="flex items-center p-2 hover:bg-gray-100 cursor-pointer"
+                  >
+                  <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center mr-2">
+                    {business.profilePic ? (
+                    <img
+                      src={business.profilePic}
+                      alt={business.businessType}
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                    ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-gray-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    )}
+                  </div>
+                  <span className="text-sm">{business.businessType}</span>
+                  </div>
+                ))}
+                </>
+              ) : (
+                <div className="p-2 text-gray-500">No results found</div>
+              )}
+              </div>
+            )}
+            </div>
         </div>
 
         {/* Chat List */}
         <div className="flex-1 overflow-y-auto">
-          {chats.map((chat) => (
+          {chats.map((chat, index) => (
             <div
-              key={chat._id}
+              key={`${chat._id}-${index}`}
               onClick={() => dispatch(fetchChatDetails(chat._id))}
               className={`p-4 border-b border-gray-200 flex items-center hover:bg-gray-50 cursor-pointer ${
                 currentChat?._id === chat._id ? 'bg-indigo-50' : ''
